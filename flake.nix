@@ -11,6 +11,7 @@
     pre-commit-hooks,
     ...
   } @ inputs: {
+    lib = import ./lib.nix inputs;
     devShells = utils.lib.eachDefaultSystemMap (system: let
       pkgs = import nixpkgs {inherit system;};
       preCommitRun = pre-commit-hooks.lib.${system}.run {
