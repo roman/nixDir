@@ -5,7 +5,29 @@
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
   };
 
-  outputs = { utils, pre-commit-hooks, ... } @ inputs:
-    {
-    };
+  outputs = {
+    nixpkgs,
+    utils,
+    pre-commit-hooks,
+    ...
+  } @ inputs: {
+    devShells = utils.lib.eachDefaultSystemMap (system: let
+      pkgs = import nixpkgs {inherit system;};
+      preCommitRun = pre-commit-hooks.lib.${system}.run {
+        src = ./.;
+        hooks = {
+          alejandra.enable = true;
+        };
+      };
+    in {
+      default = pkgs.mkShell {
+        buildInputs = builtins.attrValues {inherit (pkgs) figlet lolcat;};
+        shellHook =
+          ''
+            figlet nixDir | lolcat
+          ''
+          + preCommitRun.shellHook;
+      };
+    });
+  };
 }
