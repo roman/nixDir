@@ -142,7 +142,23 @@ nixDirInputs: let
       (builtins.pathExists "${nixDir}/packages")
       {
         packages =
-          eachSystemMapWithPkgs systems inputs (pkgs: dirAndFilesToAttrSet inputs pkgs "${nixDir}/packages");
+          eachSystemMapWithPkgs systems inputs (
+            pkgs: let
+              rejectPkgsWithUnsupportedSystem =
+                # when the package derivation contains supported platforms, ensure
+                # we filter only entries that are supported
+                pkgs.lib.filterAttrs
+                (_: pkg:
+                  if (pkg ? meta) && (pkg.meta ? platforms)
+                  then pkgs.lib.elem pkgs.system pkg.meta.platforms
+                  else
+                    # in the scenario no platform information is given, default
+                    # to keeping the package.
+                    true);
+            in
+              rejectPkgsWithUnsupportedSystem
+              (dirAndFilesToAttrSet inputs pkgs "${nixDir}/packages")
+          );
       };
 
     applyNixOSModules =
