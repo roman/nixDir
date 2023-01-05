@@ -111,11 +111,19 @@ to get the same result, if our package requires more files.
   [pre-commit-hoos.nix](https://github.com/cachix/pre-commit-hooks.nix)
   configuration.
 
+  - When `nixDir.lib.buildFlake` is called with with the `injectPreCommit`
+    parameter (defaults to `true`), the pre-commit hook is going to get injected
+    automatically in every entry of the `devShells` folder.
+
+    Another side-effect is that `self.lib.preCommitRunHook.$system` will to
+    contain the appropiate shell hook.
+
+
 ## FAQ
 
 ### Should I use this lib?
 
 If you are maintaining a project with nix flakes that has a big `flake.nix` file
-of (>500 LOC) or that involves several nix files, you may benefit from this
+(>500 LOC) or that involves several nix files, you may benefit from this
 library.
 

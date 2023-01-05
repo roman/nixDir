@@ -122,9 +122,14 @@ nixDirInputs: let
   }: let
     nixDir = "${root}/${dirName}";
 
-    applyOutput = check: entry: outputs:
+    applyOutput = check: entry0: outputs: let
+      entry =
+        if builtins.isFunction entry0
+        then entry0 outputs
+        else entry0;
+    in
       if check
-      then outputs // entry
+      then nixDirInputs.nixpkgs.lib.recursiveUpdate outputs entry
       else outputs;
 
     applyLib =
@@ -176,7 +181,7 @@ nixDirInputs: let
     in
       applyOutput
       (builtins.pathExists "${nixDir}/devShells")
-      {
+      (prev: {
         devShells = eachSystemMapWithPkgs systems inputs (
           pkgs: let
             devShells = dirAndFilesToAttrSet inputs pkgs "${nixDir}/devShells";
@@ -194,7 +199,22 @@ nixDirInputs: let
               devShells
             else devShells
         );
-      };
+
+        # Inject the preCommitRunHook in the scenario it is needed for some other
+        # context
+        lib = let
+          prevLib =
+            if prev ? lib
+            then prev.lib
+            else {};
+        in
+          if hasPreCommit && injectPreCommit
+          then let
+            hooks = {preCommitRunHook = eachSystemMapWithPkgs systems inputs (pkgs: (runPreCommit nixDir inputs pkgs).shellHook);};
+          in
+            prevLib // hooks
+          else prevLib;
+      });
   in
     builtins.foldl' (outputs: apply: apply outputs) {}
     # IMPORTANT: don't change the order of this apply functions unless is

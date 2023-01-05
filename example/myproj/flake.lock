@@ -24,14 +24,14 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1667033450,
-        "narHash": "sha256-JET28foJAvNm4Jtshl3rTUpHsIOn/FXFOfPcAyaqEwo=",
+        "lastModified": 1672903262,
+        "narHash": "sha256-bKMgm1k8/9npDggxuDQsCrVThV2BHtq2VDsNclik2d0=",
         "type": "git",
-        "url": "file:../../"
+        "url": "file:./../../"
       },
       "original": {
         "type": "git",
-        "url": "file:../../"
+        "url": "file:./../../"
       }
     },
     "nixpkgs": {
