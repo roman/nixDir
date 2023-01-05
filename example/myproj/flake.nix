@@ -1,12 +1,10 @@
 {
-  description = "go-capataz project's flake";
-
-  # nixConfig.bash-prompt-suffix = "(flake)";
+  description = "example flake for nixDir";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     nixDir = {
-      url = "git+file:../../";
+      url = "git+file:./../../";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
