@@ -5,9 +5,9 @@ system: inputs: {
   figlet,
   lolcat,
 }:
-  mkShell {
-    buildInputs = [figlet lolcat];
-    shellHook = ''
-      figlet myproj | lolcat
-    '';
-  }
+mkShell {
+  buildInputs = [figlet lolcat];
+  shellHook = ''
+    figlet myproj | lolcat
+  '';
+}

@@ -1,21 +1,37 @@
 # nixDir
 
-`nixDir` is a library that transforms a directory structure into a [nix
-flake](https://nixos.wiki/wiki/Flakes).
+`nixDir` is a library that transforms a convention oriented directory structure
+into a [nix flake](https://nixos.wiki/wiki/Flakes).
 
 With `nixDir`, you don't run into large `flake.nix` files, and don't have to
-implement the "import wiring" of multiple nix files. `nixDir` will discover all
-the files and directories that follow a predefined convention and let you do
-your business quickly.
+implement the "import wiring" of multiple nix files. `nixDir` will use
+[Convention over
+Configuration](https://en.wikipedia.org/wiki/Convention_over_configuration) and
+lets you get back to your business.
+
+## Table Of Contents
+
+- [Introduction](#introduction)
+- [Outputs](#outputs)
+  - [The `packages` output](#the-packages-output)
+  - [The `lib` output](#the-lib-output)
+  - [The `overlays` output](#the-overlays-output)
+  - [The `nixosModules` output](#the-nixosmodules-output)
+  - [The `homeManagerModules` output](#the-homemanagermodules-output)
+- [Third-Party Integrations](#third-party-integrations)
+  - [devenv.sh](#devenv)
+  - [pre-commit-hooks](#pre-commit-hooks)
+- [FAQ](#faq)
+
+<!-- markdown-toc end -->
 
 ## Introduction
 
-When using `nix flake` commands and your `flake.nix` file uses `nixDir`, the
-library will traverse a specified directory (a nix directory) to fill the flakes
-outputs.
+The `nixDir` library traverses a configured nix directory to build the flakes
+outputs dynamically.
 
-The behavior is easier to explain with an example, assume you have a `myproj`
-directory with the following `flake.nix`
+The behavior is easier to explain with an example; assume you have a `myproj`
+directory with the following `flake.nix`:
 
 ``` nix
 {
@@ -38,22 +54,50 @@ directory with the following `flake.nix`
 }
 ```
 
-With the setup from the example above, if there is no `nix` subdirectory in the
-`myproj`, our flake will have no outputs.
+With this setup, if there is no `nix` subdirectory in the `myproj`, our flake
+will have no outputs.
 
 ```bash
 $ nix flake show
 git+file:///home/myuser/tmp/myproj?ref=refs%2fheads%2fmaster&rev=b9748c5fcb913af50bedaa8e75757b7120a6a0ba
 ```
 
-Now, say we want to introduce a new package `hello` that our project needs as a
-(vital) dependency; instead of doing the same old dance of adding
-[`flake-utils`](https://github.com/numtide/flake-utils) and updating our
-`flake.nix`, we can instead add a new file in the
-`myproj/nix/packages/hello.nix` file.
+If we want to introduce a new package `hello` to our project, we can add a new
+file in the `myproj/nix/packages/hello.nix` file.
+
+Once we version this new file into the repository, the `nix flake show` output
+will have the new package available:
+
+``` bash
+$ nix flake show
+git+file:///home/roman/myproj?ref=refs%2fheads%2fmaster&rev=<sha>
+└───packages
+    ├───aarch64-darwin
+    │   └───hello: package 'hello'
+    └───x86_64-linux
+        └───hello: package 'hello'
+```
+
+`nixDir` adds the package automatically, and it does it with the `systems` that
+we specified in the `nixDir` invocation in the `flake.nix` file.
+
+Following are the various conventions that you can use with `nixDir`
+
+## Outputs
+
+> :information_source: The examples bellow assume the configured `nixDir` is
+> called `nix`
+
+### The `packages` output
+
+To add new packages, add an entry in your `nix/packages` directory. The entry
+may be a nix file, or a directory with a `default.nix`. The name of the
+file/directory will be the name of the exported package. For example:
 
 ``` nix
-# packages receive the system, the flake inputs, and a attribute set with
+# nix/packages/hello.nix
+
+# packages receive the system, the flake inputs, and an attribute set with
 # required nixpkgs packages.
 system: inputs: { hello, writeShellScriptBin, makeWrapper, symlinkJoin }:
 
@@ -69,54 +113,249 @@ symlinkJoin {
 }
 ```
 
-Once we version this new file and check the `nix flake show` output: 
+Your package file must receive three arguments. The first argument is the
+current `system` platform, the second argument are the flake's `inputs`, and the
+third argument is an attribute set with all the required dependencies for the
+package (e.g. `callPackage`
+[convention](https://nixos.org/guides/nix-pills/callpackage-design-pattern.html)).
 
-``` bash
-$ nix flake show
-git+file:///home/rgonzalez/tmp/myproj?ref=refs%2fheads%2fmaster&rev=b8b27cb3dda9fa5d1e2a5329cf26fce24fa05955
-└───packages
-    ├───aarch64-darwin
-    │   └───hello: package 'hello'
-    └───x86_64-linux
-        └───hello: package 'hello'
+> :warning: Packages could either be a nix file or a directory, nixDir will fail
+> if it finds both a directory and a file with the same name.
+
+#### Remove packages from a particular `system` platform
+
+In some situations, you may not be able to build a package for a certain
+platform. `nixDir` will help you remove a package for a specific `system`
+platform if the [package metadata's platforms
+attribute](https://ryantm.github.io/nixpkgs/stdenv/meta/) indicates the package
+is not supported by such `system`.
+
+If a package doesn't configure the platform's metadata, `nixDir` will include
+the package in every specified `system` platform by default.
+
+### The `lib` output
+
+To add a `lib` export to your flake, include a `nix/lib.nix` inside your.For
+example:
+
+``` nix
+# nix/lib.nix 
+
+inputs: {
+  sayHello = str: builtins.trace "sayHello says: ${str}" null;
+}
 ```
 
-`nixDir` adds a package automatically, and it does it with the `systems` that we
-specified in the `nixDir` invocation in the `flake.nix` file.
+The `lib.nix` file must export a function that receives the flake inputs as
+parameters.
 
-We could also add a directory `myproj/nix/packages/hello` with a `default.nix`
-to get the same result, if our package requires more files.
+> :information_source: Given that library functions should be system agnostic,
+> the `nix/lib.nix` file does not receive the `system` argument.
 
-## Available conventions
+### The `overlays` output
 
-* When `nix/lib.nix` is available, `nixDir` expects the file to export a
-  function that receives the flake inputs and returns an attribute set of
-  utility functions.
+To create `overlays`, `nixDir` looks for the `nix/overlays.nix` file. This file
+must receive the flake `inputs` as a parameter and return an attribute set with
+every named overlay. Following is an example:
 
-* When `nix/overlays.nix` is available, `nixDir` expects the file to export a
-  function that receives the flake inputs and returns an attribute set of
-  overlay functions. Note when a `package` or `devShell` file receives the
-  attribute set of `nixpkgs`, it will include these overlays, _except_ the one
-  named `default`.
+``` nix
+# nix/overlays.nix
+
+{
+  self,
+  nixpkgs,
+  my-flake-dependency1,
+  my-flake-dependency2,
+  ...
+}: 
+
+let
+  default = final: prev: 
+    self.packages.${prev.system};
   
-* When a `nix/devShells/<name>.nix` is available, `nixDir` expects the file to
-  export a function that receives the current system, flake inputs and nixpkgs
-  attrset and returns a
-  [`mkShell`](https://nixos.org/manual/nixpkgs/stable/#sec-pkgs-mkShell)
-  invocation.
+  develop = 
+    nixpkgs.lib.composeManyExtensions [
+        my-flake-dependency1.overlays.default 
+        my-flake-dependency2.overlays.default
+      ];
+in
+{
+  inherit default develop; 
+}
+```
+
+In the example above, we are creating two overlays, the one named `default`
+includes all the packages this flake exports into the nixpkgs import. The one
+named `develop` includes the overlays of some of our flake inputs.
+
+### Using overlays in the `nixpkgs` import
+
+There is an optional functionality to inject your flake overlays and use custom
+packages across your flake. Following is an example:
+
+``` nix
+{
+  # inputs = {};
+  outputs = { nixDir, ... } @ inputs:
+    nixDir.lib.buildFlake {
+      inherit inputs;
+      systems = ["x86_64-linux"];
+      root = ./.;
+      # We want the packages injected by the develop overlay
+      # available in our flake code.
+      injectOverlays = ["develop"];
+    };
+}
+```
+
+In the example above, the `develop` overlay (which was defined on your
+`nix/overlays.nix` file and includes the overlays of some of your flake inputs)
+will be included in every `nixpkgs` import used within your flake exports.
+
+> :information_source: Given that flake overlays should be system agnostic, the
+> `nix/overlays.nix` file does not receive the `system` argument.
+
+### The `nixosModules` output
+
+TODO
+
+### The `homeManagerModules` output
+
+TODO
+
+## Third-Party Integrations
+
+### [devenv.sh](https://devenv.sh/)
+<span id="devenv"></span>
+
+`nixDir` can run `devenv` profiles (using nix flakes porcelain) automatically.
+
+To add a new `devenv`, add an entry in the `nix/devenvs/` folder. Following is
+an example, of a very basic devenv profile.
+
+``` nix
+# nix/devenvs/my-devenv.nix
+
+system: inputs: { config, pkgs, ... }:
+
+{
+   languages.go.enable = true;
+   packages = [ inputs.self.packages.${system}.my-dance-music ];
+   enterShell = ''
+     echo "everybody dance now!"
+   '';
+}
+```
+
+In the same way we have it with other `nixDir` components, your `devenv` profile
+must add two extra parameters, the first one being the current `system` and the
+second one being all the inputs of your `nix flake`.
+
+If you invoke `nix flake show`, you'll notice there is a new entry in the
+`devShells` outputs called `my-devenv` (the name of the file containing the
+`devenv` profile)
+
+To run your `devenv` profile, run the `nix develop` command using the name of
+the `devenv` profile.
+
+``` bash
+nix develop .#my-devenv
+```
+
+> :warning: `devenv` modules and `devShells` work on the devShells namespace,
+> nixDir will fail if there is an entry on both `devenvs` and `devShells`
+> directories with the same name.
+
+#### A note on loading time
+
+As it stands today, the `devenv` project requires many uncached dependencies
+that will take some time to build. To skip long build times, we recommend
+[adding their cachix](https://app.cachix.org/cache/devenv) setup, or to include
+it on your flake:
+
+``` nix
+{
+  description = "myproj is here to make the world a better place";
   
-* When `nix/pre-commit.nix` is available, `nixDir` expects the file to export a
-  function that receives the current system, flake inputs and nixpkgs attrset
-  and returns a
-  [pre-commit-hoos.nix](https://github.com/cachix/pre-commit-hooks.nix)
-  configuration.
+  nixConfig = {
+    extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=";
+    extra-substituters = "https://devenv.cachix.org";
+  };
 
-  - When `nixDir.lib.buildFlake` is called with with the `injectPreCommit`
-    parameter (defaults to `true`), the pre-commit hook is going to get injected
-    automatically in every entry of the `devShells` folder.
+  # inputs = {};
+  # outputs = {};
+}
+```
 
-    Another side-effect is that `self.lib.preCommitRunHook.$system` will to
-    contain the appropiate shell hook.
+We do not recommend overriding `devenv` flake dependencies to skip cache misses.
+
+### [pre-commit-hooks](https://github.com/cachix/pre-commit-hooks.nix#seamless-integration-of-pre-commit-git-hooks-with-nix)
+<span id="pre-commit-hooks"></span>
+
+`nixDir` is able to integrate a single `pre-commit-hooks.nix` to `devShells`
+entries. This is an optional functionality; to enable it, you must have a
+`nix/pre-commit.nix` file _and_ enable the `injectPreCommit` option (defaults to
+`true`) in the `nixDir.lib.buildFlake` call. Following is an example of a pre-commit configuration.
+
+``` nix
+# nix/pre-commit.nix
+
+system: inputs: pkgs:
+
+{
+  # root of the project
+  src = ../.; 
+  hooks = {
+    nixfmt.enable = true;
+  };
+}
+```
+
+The file must receive three arguments, the current `system` platform, the flake
+`inputs` and an attribute-set with the `nixpkgs` pkgs.
+
+> :information_source: As opposed to other `nixDir` components, the
+> `nix/pre-commit.nix` receives _all_ packages rather than relying on the
+> `callPackage`
+> [convention](https://nixos.org/guides/nix-pills/callpackage-design-pattern.html)
+
+#### Accessing the pre-commit hook explicitly
+
+Another side-effect that occurs when using the `nix/pre-commit.nix` is that
+`nixDir` appends a `preCommitRunHook` attribute to the flake's `lib`. This
+attribute contains the pre-commit script, and it may be used as a value in other
+places (like a docker image). Following is an example on how to add the script
+in a docker image package:
+
+``` nix
+# nix/packages/devenv-img.nix
+
+system: {self, ...}: {
+  lib,
+  dockerTools,
+  buildEnv,
+  bashInteractive
+}: let
+
+dockerTools.buildImage {
+  tag = "latest";
+  name = "devenv-img";
+  copyToRoot = buildEnv {
+    name = "devenv-img";
+    paths = [
+      bashInteractive
+    ];
+    pathsToLink = ["/bin"];
+  };
+  config = {
+    WorkingDir = "/tmp";
+    Env = [
+      # Inject pre-commit script to your container environment
+      "PRE_COMMIT_HOOK=${self.lib.preCommitRunHook.${system}}"
+    ];
+  };
+}
+```
 
 
 ## FAQ

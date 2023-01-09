@@ -1,7 +1,7 @@
 nixDirInputs: let
   # getPkgs returns the nixpkgs repository for the given system with embedded
   # overlays from the input flake.
-  getPkgs = system: {
+  getPkgs = overlaysToInject: system: {
     self,
     nixpkgs,
     ...
@@ -12,8 +12,10 @@ nixDirInputs: let
         inherit system;
         overlays =
           builtins.attrValues
-          # remove default as it usually contains packages built by this flake
-          (builtins.removeAttrs self.overlays ["default"]);
+          (nixpkgs.lib.filterAttrs
+            # select only the overlays to inject
+            (n: _: overlaysToInject ? n)
+            self.overlays);
       }
     else
       import nixpkgs {
@@ -24,20 +26,16 @@ nixDirInputs: let
   runPreCommit = root: inputs: pkgs: let
     inherit (pkgs) system;
     config =
-      # using callPackage returns extra fields that we don't want included
-      # in the config record
-      builtins.removeAttrs
-      (pkgs.callPackage (import "${root}/pre-commit.nix" system inputs) {})
-      ["override" "overrideDerivation"];
+      import "${root}/pre-commit.nix" system inputs pkgs;
   in
     nixDirInputs.pre-commit-hooks.lib.${system}.run config;
 
   # eachDefaultSystemMapWithPkgs
-  eachSystemMapWithPkgs = systems: inputs: f:
-    nixDirInputs.utils.lib.eachSystemMap systems (system: f (getPkgs system inputs));
+  eachSystemMapWithPkgs = overlaysToInject: systems: inputs: f:
+    nixDirInputs.utils.lib.eachSystemMap systems (system: f (getPkgs overlaysToInject system inputs));
 
-  # dirAndFilesToAttrSet
-  dirAndFilesToAttrSet = inputs: pkgs: path: let
+  # importDirFiles
+  importDirFiles = importStrategy: inputs: pkgs: path: let
     inherit (pkgs) system lib callPackage;
 
     isNixFile = name: ty: ty == "regular" && lib.hasSuffix ".nix" name;
@@ -55,7 +53,11 @@ nixDirInputs: let
       if builtins.pathExists "${entry}/default.nix" && builtins.pathExists "${entry}.nix"
       then
         builtins.abort ''
-          dirNix is confused, it found two conflicting entries; one is a directory (${entry}/default.nix), and the other a file (${entry}.nix), please remove one of them.
+          dirNix is confused, it found two conflicting entries.
+
+          One is a directory (${entry}/default.nix), and the other a file (${entry}.nix).
+
+          Please remove one of the two.
         ''
       else entry;
 
@@ -78,7 +80,13 @@ nixDirInputs: let
       acc
       // {
         "${key}" =
-          callPackage (import "${path}/${entryName}" system inputs) {};
+          if importStrategy == "withCallPackage"
+          then callPackage (import "${path}/${entryName}" system inputs) {}
+          else if importStrategy == "withPkgs"
+          then import "${path}/${entryName}" system inputs pkgs
+          else if importStrategy == "withNoPkgs"
+          then import "${path}/${entryName}" system inputs
+          else builtins.abort "implementation error: invalid importStrategy ${importStrategy}";
       }) {} (nixSubDirNames ++ nixFiles);
   in
     entries;
@@ -116,11 +124,15 @@ nixDirInputs: let
   buildFlake = {
     dirName ? "nix",
     injectPreCommit ? true,
+    injectOverlays ? [],
     root,
     systems,
     inputs,
   }: let
     nixDir = "${root}/${dirName}";
+
+    overlaysToInject =
+      builtins.foldl' (acc: name: acc // {"${name}" = true;}) {} injectOverlays;
 
     applyOutput = check: entry0: outputs: let
       entry =
@@ -146,24 +158,23 @@ nixDirInputs: let
       applyOutput
       (builtins.pathExists "${nixDir}/packages")
       {
-        packages =
-          eachSystemMapWithPkgs systems inputs (
-            pkgs: let
-              rejectPkgsWithUnsupportedSystem =
-                # when the package derivation contains supported platforms, ensure
-                # we filter only entries that are supported
-                pkgs.lib.filterAttrs
-                (_: pkg:
-                  if (pkg ? meta) && (pkg.meta ? platforms)
-                  then pkgs.lib.elem pkgs.system pkg.meta.platforms
-                  else
-                    # in the scenario no platform information is given, default
-                    # to keeping the package.
-                    true);
-            in
-              rejectPkgsWithUnsupportedSystem
-              (dirAndFilesToAttrSet inputs pkgs "${nixDir}/packages")
-          );
+        packages = eachSystemMapWithPkgs overlaysToInject systems inputs (
+          pkgs: let
+            rejectPkgsWithUnsupportedSystem =
+              # when the package derivation contains supported platforms, ensure
+              # we filter only entries that are supported
+              pkgs.lib.filterAttrs
+              (_: pkg:
+                if (pkg ? meta) && (pkg.meta ? platforms)
+                then pkgs.lib.elem pkgs.system pkg.meta.platforms
+                else
+                  # in the scenario no platform information is given, default
+                  # to keeping the package.
+                  true);
+          in
+            rejectPkgsWithUnsupportedSystem
+            (importDirFiles "withCallPackage" inputs pkgs "${nixDir}/packages")
+        );
       };
 
     applyNixOSModules =
@@ -176,32 +187,81 @@ nixDirInputs: let
       (builtins.pathExists "${nixDir}/hm-modules")
       {homeManagerModules = dirToAttrSet inputs "${nixDir}/hm-modules";};
 
+    applyDevenvs =
+      applyOutput
+      (builtins.pathExists "${nixDir}/devenvs")
+      {
+        devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
+          pkgs: let
+            devupScript = {config, ...}: {
+              config.scripts.devup.exec = "${config.procfileScript}";
+            };
+
+            devenvsCfg =
+              importDirFiles "withNoPkgs" inputs pkgs "${nixDir}/devenvs";
+
+            applyDevenvCfg = devenvCfg:
+              nixDirInputs.devenv.lib.mkShell {
+                inherit pkgs;
+                inputs = nixDirInputs;
+                modules = [
+                  devenvCfg
+                ];
+              };
+          in
+            builtins.mapAttrs (_: cfg: applyDevenvCfg cfg) devenvsCfg
+        );
+      };
+
     applyDevShells = let
       hasPreCommit = builtins.pathExists "${nixDir}/pre-commit.nix";
     in
       applyOutput
       (builtins.pathExists "${nixDir}/devShells")
       (prev: {
-        devShells = eachSystemMapWithPkgs systems inputs (
+        # Create the devShells entry for the final flake output configuration
+        devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
           pkgs: let
-            devShells = dirAndFilesToAttrSet inputs pkgs "${nixDir}/devShells";
+            devShellCfgs = importDirFiles "withCallPackage" inputs pkgs "${nixDir}/devShells";
+            emptyPreCommitRunHook = "";
+            preCommitRunHook =
+              if hasPreCommit && injectPreCommit
+              then runPreCommit nixDir inputs pkgs
+              else emptyPreCommitRunHook;
           in
-            if hasPreCommit && injectPreCommit
-            then let
-              preCommitRunHook = (runPreCommit nixDir inputs pkgs).shellHook;
-            in
-              pkgs.lib.mapAttrs
-              (_: val:
-                val.overrideAttrs
-                (final: prev: {
-                  shellHook = prev.shellHook + preCommitRunHook;
-                }))
-              devShells
-            else devShells
+            pkgs.lib.foldl'
+            (
+              acc: devShellName:
+              # we cannot have a configuration for both devenv and devShell
+              # with the same name so we abort as soon as we find a collision.
+                if
+                  builtins.pathExists "${nixDir}/devenvs/${devShellName}"
+                  || builtins.pathExists "${nixDir}/devenvs/${devShellName}.nix"
+                then
+                  builtins.abort ''
+                    dirNix is confused, it found two conflicting files/directories.
+
+                    One is an entry in `devShells/${devShellName}` and the other is `devenvs/${devShellName}`.
+
+                    Please remove one of the two
+                  ''
+                else let
+                  devEnvCfg = devShellCfgs.${devShellName};
+                in
+                  acc
+                  // {
+                    ${devShellName} =
+                      devEnvCfg.overrideAttrs
+                      (final: prev: {
+                        shellHook = prev.shellHook + preCommitRunHook;
+                      });
+                  }
+            )
+            {}
+            (builtins.attrNames devShellCfgs)
         );
 
-        # Inject the preCommitRunHook in the scenario it is needed for some other
-        # context
+        # Inject the preCommitRunHook on the lib
         lib = let
           prevLib =
             if prev ? lib
@@ -210,7 +270,7 @@ nixDirInputs: let
         in
           if hasPreCommit && injectPreCommit
           then let
-            hooks = {preCommitRunHook = eachSystemMapWithPkgs systems inputs (pkgs: (runPreCommit nixDir inputs pkgs).shellHook);};
+            hooks = {preCommitRunHook = eachSystemMapWithPkgs overlaysToInject systems inputs (pkgs: (runPreCommit nixDir inputs pkgs).shellHook);};
           in
             prevLib // hooks
           else prevLib;
@@ -219,7 +279,7 @@ nixDirInputs: let
     builtins.foldl' (outputs: apply: apply outputs) {}
     # IMPORTANT: don't change the order of this apply functions unless is
     # truly necessary
-    [applyDevShells applyPackages applyHomeManagerModules applyNixOSModules applyLib applyOverlay];
+    [applyDevenvs applyDevShells applyPackages applyHomeManagerModules applyNixOSModules applyLib applyOverlay];
 in {
   inherit buildFlake;
 }

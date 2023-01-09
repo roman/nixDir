@@ -1,4 +1,4 @@
-_system: inputs: {}: {
+_system: inputs: pkgs: {
   src = ../.;
   hooks = {
     alejandra.enable = true;
