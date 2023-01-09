@@ -1,7 +1,7 @@
 nixDirInputs: let
   # getPkgs returns the nixpkgs repository for the given system with embedded
   # overlays from the input flake.
-  getPkgs = system: {
+  getPkgs = overlaysToInject: system: {
     self,
     nixpkgs,
     ...
@@ -12,8 +12,10 @@ nixDirInputs: let
         inherit system;
         overlays =
           builtins.attrValues
-          # remove default as it usually contains packages built by this flake
-          (builtins.removeAttrs self.overlays ["default"]);
+          (nixpkgs.lib.filterAttrs
+            # select only the overlays to inject
+            (n: _: overlaysToInject ? n)
+            self.overlays);
       }
     else
       import nixpkgs {
@@ -33,8 +35,8 @@ nixDirInputs: let
     nixDirInputs.pre-commit-hooks.lib.${system}.run config;
 
   # eachDefaultSystemMapWithPkgs
-  eachSystemMapWithPkgs = systems: inputs: f:
-    nixDirInputs.utils.lib.eachSystemMap systems (system: f (getPkgs system inputs));
+  eachSystemMapWithPkgs = overlaysToInject: systems: inputs: f:
+    nixDirInputs.utils.lib.eachSystemMap systems (system: f (getPkgs overlaysToInject system inputs));
 
   # dirAndFilesToAttrSet
   dirAndFilesToAttrSet = inputs: pkgs: path: let
@@ -116,11 +118,15 @@ nixDirInputs: let
   buildFlake = {
     dirName ? "nix",
     injectPreCommit ? true,
+    injectOverlays ? [],
     root,
     systems,
     inputs,
   }: let
     nixDir = "${root}/${dirName}";
+
+    overlaysToInject =
+      builtins.foldl' (acc: name: acc // {"${name}" = true;}) {} injectOverlays;
 
     applyOutput = check: entry0: outputs: let
       entry =
@@ -146,24 +152,23 @@ nixDirInputs: let
       applyOutput
       (builtins.pathExists "${nixDir}/packages")
       {
-        packages =
-          eachSystemMapWithPkgs systems inputs (
-            pkgs: let
-              rejectPkgsWithUnsupportedSystem =
-                # when the package derivation contains supported platforms, ensure
-                # we filter only entries that are supported
-                pkgs.lib.filterAttrs
-                (_: pkg:
-                  if (pkg ? meta) && (pkg.meta ? platforms)
-                  then pkgs.lib.elem pkgs.system pkg.meta.platforms
-                  else
-                    # in the scenario no platform information is given, default
-                    # to keeping the package.
-                    true);
-            in
-              rejectPkgsWithUnsupportedSystem
-              (dirAndFilesToAttrSet inputs pkgs "${nixDir}/packages")
-          );
+        packages = eachSystemMapWithPkgs overlaysToInject systems inputs (
+          pkgs: let
+            rejectPkgsWithUnsupportedSystem =
+              # when the package derivation contains supported platforms, ensure
+              # we filter only entries that are supported
+              pkgs.lib.filterAttrs
+              (_: pkg:
+                if (pkg ? meta) && (pkg.meta ? platforms)
+                then pkgs.lib.elem pkgs.system pkg.meta.platforms
+                else
+                  # in the scenario no platform information is given, default
+                  # to keeping the package.
+                  true);
+          in
+            rejectPkgsWithUnsupportedSystem
+            (dirAndFilesToAttrSet inputs pkgs "${nixDir}/packages")
+        );
       };
 
     applyNixOSModules =
@@ -210,7 +215,7 @@ nixDirInputs: let
         in
           if hasPreCommit && injectPreCommit
           then let
-            hooks = {preCommitRunHook = eachSystemMapWithPkgs systems inputs (pkgs: (runPreCommit nixDir inputs pkgs).shellHook);};
+            hooks = {preCommitRunHook = eachSystemMapWithPkgs overlaysToInject systems inputs (pkgs: (runPreCommit nixDir inputs pkgs).shellHook);};
           in
             prevLib // hooks
           else prevLib;
