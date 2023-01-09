@@ -187,6 +187,32 @@ nixDirInputs: let
       (builtins.pathExists "${nixDir}/hm-modules")
       {homeManagerModules = dirToAttrSet inputs "${nixDir}/hm-modules";};
 
+    applyDevenvs =
+      applyOutput
+      (builtins.pathExists "${nixDir}/devenvs")
+      {
+        devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
+          pkgs: let
+            devupScript = {config, ...}: {
+              config.scripts.devup.exec = "${config.procfileScript}";
+            };
+
+            devenvsCfg =
+              importDirFiles "withNoPkgs" inputs pkgs "${nixDir}/devenvs";
+
+            applyDevenvCfg = devenvCfg:
+              nixDirInputs.devenv.lib.mkShell {
+                inherit pkgs;
+                inputs = nixDirInputs;
+                modules = [
+                  devenvCfg
+                ];
+              };
+          in
+            builtins.mapAttrs (_: cfg: applyDevenvCfg cfg) devenvsCfg
+        );
+      };
+
     applyDevShells = let
       hasPreCommit = builtins.pathExists "${nixDir}/pre-commit.nix";
     in
@@ -253,7 +279,7 @@ nixDirInputs: let
     builtins.foldl' (outputs: apply: apply outputs) {}
     # IMPORTANT: don't change the order of this apply functions unless is
     # truly necessary
-    [applyDevShells applyPackages applyHomeManagerModules applyNixOSModules applyLib applyOverlay];
+    [applyDevenvs applyDevShells applyPackages applyHomeManagerModules applyNixOSModules applyLib applyOverlay];
 in {
   inherit buildFlake;
 }
