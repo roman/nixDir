@@ -38,8 +38,8 @@ nixDirInputs: let
   eachSystemMapWithPkgs = overlaysToInject: systems: inputs: f:
     nixDirInputs.utils.lib.eachSystemMap systems (system: f (getPkgs overlaysToInject system inputs));
 
-  # dirAndFilesToAttrSet
-  dirAndFilesToAttrSet = inputs: pkgs: path: let
+  # importDirFiles
+  importDirFiles = importStrategy: inputs: pkgs: path: let
     inherit (pkgs) system lib callPackage;
 
     isNixFile = name: ty: ty == "regular" && lib.hasSuffix ".nix" name;
@@ -57,7 +57,11 @@ nixDirInputs: let
       if builtins.pathExists "${entry}/default.nix" && builtins.pathExists "${entry}.nix"
       then
         builtins.abort ''
-          dirNix is confused, it found two conflicting entries; one is a directory (${entry}/default.nix), and the other a file (${entry}.nix), please remove one of them.
+          dirNix is confused, it found two conflicting entries.
+
+          One is a directory (${entry}/default.nix), and the other a file (${entry}.nix).
+
+          Please remove one of the two.
         ''
       else entry;
 
@@ -80,7 +84,13 @@ nixDirInputs: let
       acc
       // {
         "${key}" =
-          callPackage (import "${path}/${entryName}" system inputs) {};
+          if importStrategy == "withCallPackage"
+          then callPackage (import "${path}/${entryName}" system inputs) {}
+          else if importStrategy == "withPkgs"
+          then import "${path}/${entryName}" system inputs pkgs
+          else if importStrategy == "withNoPkgs"
+          then import "${path}/${entryName}" system inputs
+          else builtins.abort "implementation error: invalid importStrategy ${importStrategy}";
       }) {} (nixSubDirNames ++ nixFiles);
   in
     entries;
@@ -167,7 +177,7 @@ nixDirInputs: let
                   true);
           in
             rejectPkgsWithUnsupportedSystem
-            (dirAndFilesToAttrSet inputs pkgs "${nixDir}/packages")
+            (importDirFiles "withCallPackage" inputs pkgs "${nixDir}/packages")
         );
       };
 
@@ -187,26 +197,49 @@ nixDirInputs: let
       applyOutput
       (builtins.pathExists "${nixDir}/devShells")
       (prev: {
-        devShells = eachSystemMapWithPkgs systems inputs (
+        # Create the devShells entry for the final flake output configuration
+        devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
           pkgs: let
-            devShells = dirAndFilesToAttrSet inputs pkgs "${nixDir}/devShells";
+            devShellCfgs = importDirFiles "withCallPackage" inputs pkgs "${nixDir}/devShells";
+            emptyPreCommitRunHook = "";
+            preCommitRunHook =
+              if hasPreCommit && injectPreCommit
+              then runPreCommit nixDir inputs pkgs
+              else emptyPreCommitRunHook;
           in
-            if hasPreCommit && injectPreCommit
-            then let
-              preCommitRunHook = (runPreCommit nixDir inputs pkgs).shellHook;
-            in
-              pkgs.lib.mapAttrs
-              (_: val:
-                val.overrideAttrs
-                (final: prev: {
-                  shellHook = prev.shellHook + preCommitRunHook;
-                }))
-              devShells
-            else devShells
+            pkgs.lib.foldl'
+            (
+              acc: devShellName:
+              # we cannot have a configuration for both devenv and devShell
+              # with the same name so we abort as soon as we find a collision.
+                if
+                  builtins.pathExists "${nixDir}/devenvs/${devShellName}"
+                  || builtins.pathExists "${nixDir}/devenvs/${devShellName}.nix"
+                then
+                  builtins.abort ''
+                    dirNix is confused, it found two conflicting files/directories.
+
+                    One is an entry in `devShells/${devShellName}` and the other is `devenvs/${devShellName}`.
+
+                    Please remove one of the two
+                  ''
+                else let
+                  devEnvCfg = devShellCfgs.${devShellName};
+                in
+                  acc
+                  // {
+                    ${devShellName} =
+                      devEnvCfg.overrideAttrs
+                      (final: prev: {
+                        shellHook = prev.shellHook + preCommitRunHook;
+                      });
+                  }
+            )
+            {}
+            (builtins.attrNames devShellCfgs)
         );
 
-        # Inject the preCommitRunHook in the scenario it is needed for some other
-        # context
+        # Inject the preCommitRunHook on the lib
         lib = let
           prevLib =
             if prev ? lib
