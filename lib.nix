@@ -26,11 +26,7 @@ nixDirInputs: let
   runPreCommit = root: inputs: pkgs: let
     inherit (pkgs) system;
     config =
-      # using callPackage returns extra fields that we don't want included
-      # in the config record
-      builtins.removeAttrs
-      (pkgs.callPackage (import "${root}/pre-commit.nix" system inputs) {})
-      ["override" "overrideDerivation"];
+      import "${root}/pre-commit.nix" system inputs pkgs;
   in
     nixDirInputs.pre-commit-hooks.lib.${system}.run config;
 
