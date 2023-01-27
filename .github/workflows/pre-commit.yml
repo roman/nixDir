@@ -1,0 +1,33 @@
+---
+name: "pre-commit"
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/*.nix"
+
+  pull_request:
+    paths:
+      - "**/*.nix"
+
+concurrency:
+  group: pre-commit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: "checkout nixDir"
+        uses: actions/checkout@v3
+        with:
+          ssh-known-hosts: 'github.internal.digitalocean.com'
+
+      - name: "setup nix on the runner"
+        uses: cachix/install-nix-action@v18
+        with:
+          extra_nix_config: |-
+            system-features = nixos-test benchmark big-parallel kvm
+
+      - name: "run pre-commit checks"
+        run: "nix develop -c pre-commit run --all-files"
