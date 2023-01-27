@@ -225,73 +225,66 @@ nixDirInputs: let
         );
       };
 
+    applyPreCommitLib =
+      applyOutput
+        (builtins.pathExists "${nixDir}/pre-commit.nix" && injectPreCommit)
+        {
+          lib = {preCommitRunHook = eachSystemMapWithPkgs overlaysToInject systems inputs (pkgs: (runPreCommit nixDir inputs pkgs).shellHook);};
+        };
+
     applyDevShells = let
       hasPreCommit = builtins.pathExists "${nixDir}/pre-commit.nix";
     in
       applyOutput
       (builtins.pathExists "${nixDir}/devShells")
-      (prev: {
-        # Create the devShells entry for the final flake output configuration
-        devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
-          pkgs: let
-            devShellCfgs = importDirFiles "withCallPackage" inputs pkgs "${nixDir}/devShells";
-            emptyPreCommitRunHook = "";
-            preCommitRunHook =
-              if hasPreCommit && injectPreCommit
-              then runPreCommit nixDir inputs pkgs
-              else emptyPreCommitRunHook;
-          in
-            pkgs.lib.foldl'
-            (
-              acc: devShellName:
-              # we cannot have a configuration for both devenv and devShell
-              # with the same name so we abort as soon as we find a collision.
-                if
-                  builtins.pathExists "${nixDir}/devenvs/${devShellName}"
-                  || builtins.pathExists "${nixDir}/devenvs/${devShellName}.nix"
-                then
-                  builtins.abort ''
+        {
+          # Create the devShells entry for the final flake output configuration
+          devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
+            pkgs: let
+              devShellCfgs = importDirFiles "withCallPackage" inputs pkgs "${nixDir}/devShells";
+              emptyPreCommitRunHook = "";
+              preCommitRunHook =
+                if hasPreCommit && injectPreCommit
+                then runPreCommit nixDir inputs pkgs
+                else emptyPreCommitRunHook;
+            in
+              pkgs.lib.foldl'
+                (
+                  acc: devShellName:
+                  # we cannot have a configuration for both devenv and devShell
+                  # with the same name so we abort as soon as we find a collision.
+                  if
+                    builtins.pathExists "${nixDir}/devenvs/${devShellName}"
+                    || builtins.pathExists "${nixDir}/devenvs/${devShellName}.nix"
+                  then
+                    builtins.abort ''
                     dirNix is confused, it found two conflicting files/directories.
 
                     One is an entry in `devShells/${devShellName}` and the other is `devenvs/${devShellName}`.
 
                     Please remove one of the two
                   ''
-                else let
-                  devEnvCfg = devShellCfgs.${devShellName};
-                in
-                  acc
-                  // {
-                    ${devShellName} =
-                      devEnvCfg.overrideAttrs
-                      (final: prev: {
-                        shellHook = prev.shellHook + preCommitRunHook;
-                      });
-                  }
-            )
-            {}
-            (builtins.attrNames devShellCfgs)
-        );
-
-        # Inject the preCommitRunHook on the lib
-        lib = let
-          prevLib =
-            if prev ? lib
-            then prev.lib
-            else {};
-        in
-          if hasPreCommit && injectPreCommit
-          then let
-            hooks = {preCommitRunHook = eachSystemMapWithPkgs overlaysToInject systems inputs (pkgs: (runPreCommit nixDir inputs pkgs).shellHook);};
-          in
-            prevLib // hooks
-          else prevLib;
-      });
+                  else let
+                    devEnvCfg = devShellCfgs.${devShellName};
+                  in
+                    acc
+                    // {
+                      ${devShellName} =
+                        devEnvCfg.overrideAttrs
+                          (final: prev: {
+                            shellHook = prev.shellHook + preCommitRunHook;
+                          });
+                    }
+                )
+                {}
+                (builtins.attrNames devShellCfgs)
+          );
+        };
   in
     builtins.foldl' (outputs: apply: apply outputs) {}
     # IMPORTANT: don't change the order of this apply functions unless is
     # truly necessary
-    [applyDevenvs applyDevShells applyPackages applyHomeManagerModules applyNixOSModules applyLib applyOverlay];
+    [applyDevenvs applyDevShells applyPackages applyHomeManagerModules applyNixOSModules applyPreCommitLib applyLib applyOverlay];
 in {
   inherit buildFlake;
 }

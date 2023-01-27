@@ -128,8 +128,8 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1674780291,
-        "narHash": "sha256-/x01RHDaOcKwKHCM88e4npL9CtlemC0U5+MaRjtidQA=",
+        "lastModified": 1674781020,
+        "narHash": "sha256-cnOzdltkzVmSwz5/PUz6+DoiK/GSCfYMt2OmS+s0hwQ=",
         "type": "git",
         "url": "file:../../"
       },
