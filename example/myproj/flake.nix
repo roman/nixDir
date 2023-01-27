@@ -8,7 +8,7 @@
 
   inputs = {
     nixDir = {
-      url = "git+file:./../../";
+      url = "git+file:../../";
     };
     nixpkgs.follows = "nixDir/nixpkgs";
   };

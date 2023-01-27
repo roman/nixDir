@@ -8,7 +8,8 @@ nixDirInputs: let
   }:
     if self ? overlays
     then
-      import nixpkgs {
+      import nixpkgs
+      {
         inherit system;
         overlays =
           builtins.attrValues
@@ -61,33 +62,39 @@ nixDirInputs: let
         ''
       else entry;
 
-    nixSubDirNames = builtins.foldl' (acc: subdir: let
-      files =
-        lib.attrNames
-        (lib.filterAttrs hasDefaultNix (builtins.readDir (checkDirFileConflict "${path}/${subdir}")));
-    in
-      if builtins.length files == 1
-      then acc ++ [subdir]
-      else acc) []
-    subDirNames;
+    nixSubDirNames =
+      builtins.foldl'
+      (acc: subdir: let
+        files =
+          lib.attrNames
+          (lib.filterAttrs hasDefaultNix (builtins.readDir (checkDirFileConflict "${path}/${subdir}")));
+      in
+        if builtins.length files == 1
+        then acc ++ [subdir]
+        else acc) []
+      subDirNames;
 
-    entries = builtins.foldl' (acc: entryName: let
-      # the key sometimes may be a directory name, other times it may be a
-      # .nix file name. Remove the .nix suffix to standarize.
-      key =
-        lib.removeSuffix ".nix" entryName;
-    in
-      acc
-      // {
-        "${key}" =
-          if importStrategy == "withCallPackage"
-          then callPackage (import "${path}/${entryName}" system inputs) {}
-          else if importStrategy == "withPkgs"
-          then import "${path}/${entryName}" system inputs pkgs
-          else if importStrategy == "withNoPkgs"
-          then import "${path}/${entryName}" system inputs
-          else builtins.abort "implementation error: invalid importStrategy ${importStrategy}";
-      }) {} (nixSubDirNames ++ nixFiles);
+    entries =
+      builtins.foldl'
+      (acc: entryName: let
+        # the key sometimes may be a directory name, other times it may be a
+        # .nix file name. Remove the .nix suffix to standarize.
+        key =
+          lib.removeSuffix ".nix" entryName;
+      in
+        acc
+        // {
+          "${key}" =
+            if importStrategy == "withCallPackage"
+            then callPackage (import "${path}/${entryName}" system inputs) {}
+            else if importStrategy == "withPkgs"
+            then import "${path}/${entryName}" system inputs pkgs
+            else if importStrategy == "withNoPkgs"
+            then import "${path}/${entryName}" system inputs
+            else builtins.abort "implementation error: invalid importStrategy ${importStrategy}";
+        })
+      {}
+      (nixSubDirNames ++ nixFiles);
   in
     entries;
   #
@@ -101,23 +108,28 @@ nixDirInputs: let
       builtins.attrNames
       (lib.filterAttrs (name: ty: ty == "directory") (builtins.readDir path));
 
-    nixSubDirNames = builtins.foldl' (acc: subdir: let
-      files =
-        lib.attrNames
-        (lib.filterAttrs hasDefaultNix (builtins.readDir "${path}/${subdir}"));
-    in
-      if builtins.length files == 1
-      then acc ++ [subdir]
-      else acc) []
-    subDirNames;
+    nixSubDirNames =
+      builtins.foldl'
+      (acc: subdir: let
+        files =
+          lib.attrNames
+          (lib.filterAttrs hasDefaultNix (builtins.readDir "${path}/${subdir}"));
+      in
+        if builtins.length files == 1
+        then acc ++ [subdir]
+        else acc) []
+      subDirNames;
 
-    entries = builtins.foldl' (acc: entryName:
-      acc
-      // {
-        "${entryName}" =
-          import "${path}/${entryName}" inputs;
-      }) {}
-    nixSubDirNames;
+    entries =
+      builtins.foldl'
+      (acc: entryName:
+        acc
+        // {
+          "${entryName}" =
+            import "${path}/${entryName}" inputs;
+        })
+      {}
+      nixSubDirNames;
   in
     entries;
 
