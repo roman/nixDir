@@ -86,52 +86,23 @@ nixDirInputs: let
         // {
           "${key}" =
             if importStrategy == "withCallPackage"
-            then callPackage (import "${path}/${entryName}" system inputs) {}
+            then pkgs.callPackage (import "${path}/${entryName}" pkgs.system inputs) {}
             else if importStrategy == "withPkgs"
-            then import "${path}/${entryName}" system inputs pkgs
+            then import "${path}/${entryName}" pkgs.system inputs pkgs
             else if importStrategy == "withNoPkgs"
-            then import "${path}/${entryName}" system inputs
+            then import "${path}/${entryName}" pkgs.system inputs
             else builtins.abort "implementation error: invalid importStrategy ${importStrategy}";
         })
       {}
       (nixSubDirNames ++ nixFiles);
   in
     entries;
-  #
-  # dirToAttrSet
-  dirToAttrSet = inputs: path: let
-    inherit (inputs.nixpkgs) lib;
 
-    hasDefaultNix = name: ty: ty == "regular" && name == "default.nix";
+  importPkgs = inputs: pkgs: path: importDirFiles "withCallPackage" inputs pkgs path;
 
-    subDirNames =
-      builtins.attrNames
-      (lib.filterAttrs (name: ty: ty == "directory") (builtins.readDir path));
+  importModules = inputs: path: importDirFiles "withNoPkgs" inputs null path;
 
-    nixSubDirNames =
-      builtins.foldl'
-      (acc: subdir: let
-        files =
-          lib.attrNames
-          (lib.filterAttrs hasDefaultNix (builtins.readDir "${path}/${subdir}"));
-      in
-        if builtins.length files == 1
-        then acc ++ [subdir]
-        else acc) []
-      subDirNames;
-
-    entries =
-      builtins.foldl'
-      (acc: entryName:
-        acc
-        // {
-          "${entryName}" =
-            import "${path}/${entryName}" inputs;
-        })
-      {}
-      nixSubDirNames;
-  in
-    entries;
+  importShells = importPkgs;
 
   buildFlake = {
     dirName ? "nix",
@@ -185,19 +156,19 @@ nixDirInputs: let
                   true);
           in
             rejectPkgsWithUnsupportedSystem
-            (importDirFiles "withCallPackage" inputs pkgs "${nixDir}/packages")
+            (importPkgs inputs pkgs "${nixDir}/packages")
         );
       };
 
     applyNixOSModules =
       applyOutput
-      (builtins.pathExists "${nixDir}/nixos-modules")
-      {nixosModules = dirToAttrSet inputs "${nixDir}/nixos-modules";};
+        (builtins.pathExists "${nixDir}/modules/nixos")
+        {nixosModules = importModules inputs "${nixDir}/modules/nixos";};
 
     applyHomeManagerModules =
       applyOutput
-      (builtins.pathExists "${nixDir}/hm-modules")
-      {homeManagerModules = dirToAttrSet inputs "${nixDir}/hm-modules";};
+        (builtins.pathExists "${nixDir}/modules/home-manager")
+        {homeManagerModules = importModules inputs "${nixDir}/modules/home-manager";};
 
     applyDevenvs =
       applyOutput
@@ -241,7 +212,7 @@ nixDirInputs: let
           # Create the devShells entry for the final flake output configuration
           devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
             pkgs: let
-              devShellCfgs = importDirFiles "withCallPackage" inputs pkgs "${nixDir}/devShells";
+              devShellCfgs = importShells inputs pkgs "${nixDir}/devShells";
               emptyPreCommitRunHook = "";
               preCommitRunHook =
                 if hasPreCommit && injectPreCommit
