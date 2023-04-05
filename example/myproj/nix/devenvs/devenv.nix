@@ -4,13 +4,23 @@ _system: _inputs: {
   ...
 }: {
   config = {
-    packages = [pkgs.hello];
+    packages = [ pkgs.cowsay ];
     languages.go.enable = true;
-    processes = {
-      silly-example.exec = "while true; do echo hello && sleep 1; done";
-    };
+
+    # use regular devenv functionality
     enterShell = ''
-      echo "enterShell worked"
+      cowsay "myproj demo"
     '';
+
+    # define a process in-line in the devenv configuration
+    processes = {
+      silly-example.exec = "while true; do echo silly-example && sleep 1; done";
+    };
+
+    # or use the settings defined in the nix/modules/devenv/my-hello-service
+    # directory.
+    #
+    # This can only work if the injectDevenvModules is defined
+    services.my-hello.enable = true;
   };
 }

@@ -37,7 +37,7 @@ nixDirInputs: let
 
   # importDirFiles
   importDirFiles = importStrategy: inputs: pkgs: path: let
-    inherit (pkgs) system lib callPackage;
+    inherit (inputs.nixpkgs) lib;
 
     isNixFile = name: ty: ty == "regular" && lib.hasSuffix ".nix" name;
 
@@ -107,6 +107,7 @@ nixDirInputs: let
   buildFlake = {
     dirName ? "nix",
     injectPreCommit ? true,
+    injectDevenvModules ? [],
     injectOverlays ? [],
     root,
     systems,
@@ -170,31 +171,60 @@ nixDirInputs: let
         (builtins.pathExists "${nixDir}/modules/home-manager")
         {homeManagerModules = importModules inputs "${nixDir}/modules/home-manager";};
 
+    applyDevenvModules =
+      applyOutput
+        (builtins.pathExists "${nixDir}/modules/devenv")
+        {devenvModules = importModules inputs "${nixDir}/modules/devenv";};
+
     applyDevenvs =
       applyOutput
-      (builtins.pathExists "${nixDir}/devenvs")
-      {
-        devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
-          pkgs: let
-            devupScript = {config, ...}: {
-              config.scripts.devup.exec = "${config.procfileScript}";
-            };
+        (builtins.pathExists "${nixDir}/devenvs")
+        (final: {
+          devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
+            pkgs: let
+              devenvsCfg =
+                importModules inputs "${nixDir}/devenvs";
 
-            devenvsCfg =
-              importDirFiles "withNoPkgs" inputs pkgs "${nixDir}/devenvs";
+              devenvModules =
+                # if we have devenvModules initialized
+                if final ? devenvModules then
+                  if builtins.typeOf injectDevenvModules == "bool" then
+                    # when the injectDevenvModules is a bool, include all
+                    # defined nix/modules/devenv entries into this devenv
+                    # configuration
+                    builtins.attrValues final.devenvModules
 
-            applyDevenvCfg = devenvCfg:
-              nixDirInputs.devenv.lib.mkShell {
-                inherit pkgs;
-                inputs = nixDirInputs;
-                modules = [
-                  devenvCfg
-                ];
-              };
-          in
-            builtins.mapAttrs (_: cfg: applyDevenvCfg cfg) devenvsCfg
-        );
-      };
+
+                  else if builtins.typeOf injectDevenvModules == "list" then
+                    # when the injectDevenvModules is a list of strings, we
+                    # import only the specified modules inside the
+                    # nix/modules/devenv directory
+                    let
+                      modules = final.devenvModules;
+                    in
+                      builtins.foldl' (acc: moduleName:
+                        if pkgs.lib.hasAttrByPath [moduleName] modules then
+                          acc ++ [ modules."${moduleName}" ]
+                        else
+                          acc
+                      ) [] injectDevenvModules
+                  else
+                    # expect a bool or a list of strings
+                    builtins.abort "error: injectDevenvModules must be a string of a list of devenv module names"
+                else
+                  [];
+
+              applyDevenvCfg = devenvCfg:
+                nixDirInputs.devenv.lib.mkShell {
+                  inherit pkgs;
+                  inputs = nixDirInputs;
+                  modules =
+                    devenvModules ++ [ devenvCfg ];
+                };
+            in
+              builtins.mapAttrs (_: cfg: applyDevenvCfg cfg) devenvsCfg
+          );
+        });
 
     applyPreCommitLib =
       applyOutput
@@ -255,7 +285,17 @@ nixDirInputs: let
     builtins.foldl' (outputs: apply: apply outputs) {}
     # IMPORTANT: don't change the order of this apply functions unless is
     # truly necessary
-    [applyDevenvs applyDevShells applyPackages applyHomeManagerModules applyNixOSModules applyPreCommitLib applyLib applyOverlay];
+    [
+      applyDevenvModules
+      applyDevenvs
+      applyDevShells
+      applyPackages
+      applyHomeManagerModules
+      applyNixOSModules
+      applyPreCommitLib
+      applyLib
+      applyOverlay
+    ];
 in {
   inherit buildFlake;
 }
