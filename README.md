@@ -192,6 +192,8 @@ There is an optional functionality to inject your flake overlays and use custom
 packages across your flake. Following is an example:
 
 ``` nix
+# flake.nix
+
 {
   # inputs = {};
   outputs = { nixDir, ... } @ inputs:
@@ -253,8 +255,83 @@ nix develop .#my-devenv
 ```
 
 > :warning: `devenv` modules and `devShells` work on the devShells namespace,
-> nixDir will fail if there is an entry on both `devenvs` and `devShells`
-> directories with the same name.
+> nixDir will fail if there is an entry on both `nix/devenvs` and
+> `nix/devShells` directories with the same name.
+
+#### devenvModules output
+
+Your flake is able to export devenvModule entries by adding a
+`nix/modules/devenv` directory. Following is an example:
+
+``` nix
+# nix/modules/devenv/my-hello/default.nix
+
+inputs : { config, lib, pkgs, ... }:
+
+let
+  cfg = config.services.my-hello;
+
+  startScript = pkgs.writeShellScriptBin "start-my-hello" ''
+    set -euo pipefail
+    while true; do ${pkgs.hello}/bin/hello -g "my-hello enabled" && sleep 1; done
+  '';
+in
+{
+  options = {
+    services.my-hello = {
+      enable = lib.mkEnableOption "My Hello World app";
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    processes.my-hello.exec = ''${startScript}/bin/start-my-hello'';
+  };
+}
+```
+
+Your devenv module file must receive two arguments. The first argument contains
+the flake's `inputs`, and the second argument is the attribute set that devenv
+modules expect (e.g. `{pkgs, config, ...}`).
+
+You may inject the devenv modules on all your flake devenv configurations (e.g.
+`nix/devenvs`) by specifying the `injectDevenvModules` option in the
+`nixDir.lib.buildFlake` call. The argument may be a list of module names (the
+name of the directory or file found in `nix/modules/devenv`) or a boolean value
+`true` to import _all_ devenv modules.
+
+You can see an example bellow using a boolean for the `injectDevenvModules`
+entry:
+
+``` nix
+# flake.nix
+
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixDir.url = "github:roman/nixDir";
+  };
+
+  outputs = {nixDir, ...} @ inputs:
+    nixDir.lib.buildFlake {
+      inputs = inputs;
+      systems = ["x86_64-linux" "x86_64-darwin" "aarch64-darwin"];
+      root = ./.;
+      # import all devenv modules in my devenv shells
+      injectDevenvModules = true;
+      # ^^^^^^^^^^^^^^^^^^^^^^^^^
+    };
+}
+
+```
+
+When handling your flake in code, a new export called `devenvModules` is
+registered in the flake's outputs:
+
+``` bash
+$ nix flake show
+git+file:///home/rgonzalez/Projects/oss/nixDir?dir=example/myproj
+└───devenvModules: unknown
+```
 
 #### A note on loading time
 
