@@ -16,8 +16,6 @@ lets you get back to your business.
   - [The `packages` output](#the-packages-output)
   - [The `lib` output](#the-lib-output)
   - [The `overlays` output](#the-overlays-output)
-  - [The `nixosModules` output](#the-nixosmodules-output)
-  - [The `homeManagerModules` output](#the-homemanagermodules-output)
 - [Third-Party Integrations](#third-party-integrations)
   - [devenv.sh](#devenv)
   - [pre-commit-hooks](#pre-commit-hooks)
@@ -90,8 +88,8 @@ Following are the various conventions that you can use with `nixDir`
 
 ### The `packages` output
 
-To add new packages, add an entry in your `nix/packages` directory. The entry
-may be a nix file, or a directory with a `default.nix`. The name of the
+To add new packages, add an entry in your `nix/packages` directory. The package
+entry may be a nix file, or a directory with a `default.nix`. The name of the
 file/directory will be the name of the exported package. For example:
 
 ``` nix
@@ -201,9 +199,9 @@ packages across your flake. Following is an example:
       inherit inputs;
       systems = ["x86_64-linux"];
       root = ./.;
-      # We want the packages injected by the develop overlay
-      # available in our flake code.
-      injectOverlays = ["develop"];
+      # We want the packages injected by the `develop` overlay
+      # which is defined as an entry in our `nix/overlays.nix` file.
+      injectOverlays = [ "develop" ];
     };
 }
 ```
@@ -214,14 +212,6 @@ will be included in every `nixpkgs` import used within your flake exports.
 
 > :information_source: Given that flake overlays should be system agnostic, the
 > `nix/overlays.nix` file does not receive the `system` argument.
-
-### The `nixosModules` output
-
-TODO
-
-### The `homeManagerModules` output
-
-TODO
 
 ## Third-Party Integrations
 
