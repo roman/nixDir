@@ -243,11 +243,11 @@ nixDirInputs: let
           devShells = eachSystemMapWithPkgs overlaysToInject systems inputs (
             pkgs: let
               devShellCfgs = importShells inputs pkgs "${nixDir}/devShells";
-              emptyPreCommitRunHook = "";
-              preCommitRunHook =
+              emptyPreCommitInstallationScript = "";
+              preCommitInstallationScript =
                 if hasPreCommit && injectPreCommit
-                then runPreCommit nixDir inputs pkgs
-                else emptyPreCommitRunHook;
+                then (runPreCommit nixDir inputs pkgs).shellHook
+                else emptyPreCommitInstallationScript;
             in
               pkgs.lib.foldl'
                 (
@@ -273,7 +273,7 @@ nixDirInputs: let
                       ${devShellName} =
                         devEnvCfg.overrideAttrs
                           (final: prev: {
-                            shellHook = prev.shellHook + preCommitRunHook;
+                            shellHook = prev.shellHook + preCommitInstallationScript;
                           });
                     }
                 )
