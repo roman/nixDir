@@ -26,8 +26,11 @@ nixDirInputs: let
   # runPreCommit
   runPreCommit = root: inputs: pkgs: let
     inherit (pkgs) system;
-    config =
-      import "${root}/pre-commit.nix" system inputs pkgs;
+    config0 = import "${root}/pre-commit.nix" system inputs pkgs;
+    # add the src attribute to the pre-commit configuration
+    config = config0 // {
+        src = root;
+      };
   in
     nixDirInputs.pre-commit-hooks.lib.${system}.run config;
 
