@@ -134,7 +134,12 @@ nixDirInputs: let
     applyLib =
       applyOutput
       (builtins.pathExists "${nixDir}/lib.nix")
-      {lib = import "${nixDir}/lib.nix" inputs;};
+      {
+        lib = (
+          { getPkgs = system: getPkgs overlaysToInject system inputs; }
+          // import "${nixDir}/lib.nix" inputs
+        );
+      };
 
     applyOverlay =
       applyOutput
