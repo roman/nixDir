@@ -124,8 +124,10 @@ nixDirInputs: let
     devShellsWithPreCommit =
       if builtins.typeOf injectPreCommit == "list" then
         builtins.foldl' (acc: name: acc // {"${name}" = true;}) {} injectPreCommit
+      else if builtins.typeOf injectPreCommit == "bool" then
+        {}
       else
-        {};
+        builtins.abort "error: injectPreCommit must be a string of a list of devShell/devenv profile names";
 
     shouldInjectPreCommit = devShellName:
       (builtins.typeOf injectPreCommit == "bool" && injectPreCommit)
@@ -203,8 +205,8 @@ nixDirInputs: let
               devenvsCfg =
                 importModules inputs "${nixDir}/devenvs";
 
-              devenvPreCommitModule = _devShellName:
-                if injectPreCommit then
+              devenvPreCommitModule = devShellName:
+                if shouldInjectPreCommit devShellName then
                   ({...}:
                     pkgs.lib.recursiveUpdate
                       {
@@ -255,7 +257,7 @@ nixDirInputs: let
                     };
                 in result // (
                   {
-                    nixDirPreCommitInjected = true;
+                    nixDirPreCommitInjected = shouldInjectPreCommit devShellName;
                   });
             in
               builtins.mapAttrs (name: cfg: applyDevenvCfg name cfg) devenvsCfg
@@ -264,7 +266,7 @@ nixDirInputs: let
 
     applyPreCommitLib =
       applyOutput
-        (builtins.pathExists "${nixDir}/pre-commit.nix" && injectPreCommit)
+        (builtins.pathExists "${nixDir}/pre-commit.nix")
         {
           lib = {preCommitRunHook = eachSystemMapWithPkgs overlaysToInject systems inputs (pkgs: (runPreCommit nixDir inputs pkgs).shellHook);};
         };
@@ -302,15 +304,15 @@ nixDirInputs: let
                     Please remove one of the two
                   ''
                   else let
-                    devEnvCfg = devShellCfgs.${devShellName};
+                    devShellCfg = devShellCfgs.${devShellName};
                   in
                     acc
                     // {
                       ${devShellName} =
-                        devEnvCfg.overrideAttrs
+                        devShellCfg.overrideAttrs
                           (final: prev: {
                             shellHook = prev.shellHook + preCommitInstallationScript devShellName;
-                            nixDirPreCommitInjected = true;
+                            nixDirPreCommitInjected = shouldInjectPreCommit devShellName;
                           });
                     }
                 )
