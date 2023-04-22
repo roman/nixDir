@@ -121,6 +121,16 @@ nixDirInputs: let
     overlaysToInject =
       builtins.foldl' (acc: name: acc // {"${name}" = true;}) {} injectOverlays;
 
+    devShellsWithPreCommit =
+      if builtins.typeOf injectPreCommit == "list" then
+        builtins.foldl' (acc: name: acc // {"${name}" = true;}) {} injectPreCommit
+      else
+        {};
+
+    shouldInjectPreCommit = devShellName:
+      (builtins.typeOf injectPreCommit == "bool" && injectPreCommit)
+        || (builtins.hasAttr devShellName devShellsWithPreCommit);
+
     applyOutput = check: entry0: outputs: let
       entry =
         if builtins.isFunction entry0
@@ -270,8 +280,8 @@ nixDirInputs: let
             pkgs: let
               devShellCfgs = importShells inputs pkgs "${nixDir}/devShells";
               emptyPreCommitInstallationScript = "";
-              preCommitInstallationScript =
-                if hasPreCommit && injectPreCommit
+              preCommitInstallationScript = devShellName:
+                if hasPreCommit && shouldInjectPreCommit devShellName
                 then (runPreCommit nixDir inputs pkgs).shellHook
                 else emptyPreCommitInstallationScript;
             in
@@ -299,7 +309,7 @@ nixDirInputs: let
                       ${devShellName} =
                         devEnvCfg.overrideAttrs
                           (final: prev: {
-                            shellHook = prev.shellHook + preCommitInstallationScript;
+                            shellHook = prev.shellHook + preCommitInstallationScript devShellName;
                             nixDirPreCommitInjected = true;
                           });
                     }
