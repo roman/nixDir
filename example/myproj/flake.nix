@@ -26,7 +26,7 @@
       # default value, the declaration is here for demonstration purposes.
       dirName = "nix";
       # inject the pre-commit of this project to all devShells and devenv configurations
-      injectPreCommit = true;
+      injectPreCommit = [ "default" "devenv" ];
       # use a list of module names (e.g. nix/modules/devenv/my-hello-service) or
       # a boolean value to signal we want all our devenv modules imported when
       # we have an entry in the nix/devenvs directory.

@@ -38,7 +38,13 @@
       };
     in {
       default = pkgs.mkShell {
-        buildInputs = builtins.attrValues {inherit (pkgs) figlet lolcat;};
+        buildInputs = [
+          pkgs.figlet
+          pkgs.lolcat
+          pkgs.jq
+          (pkgs.bats.withLibraries (p: [p.bats-support p.bats-assert]))
+        ];
+
         shellHook =
           ''
             figlet nixDir | lolcat
