@@ -193,6 +193,18 @@ nixDirInputs: let
               devenvsCfg =
                 importModules inputs "${nixDir}/devenvs";
 
+              devenvPreCommitModule = _devShellName:
+                if injectPreCommit then
+                  ({...}:
+                    pkgs.lib.recursiveUpdate
+                      {
+                        pre-commit =
+                          import "${nixDir}/pre-commit.nix" pkgs.system inputs pkgs;
+                      }
+                      { pre-commit.rootSrc = root; })
+                else
+                  {};
+
               devenvModules =
                 # if we have devenvModules initialized
                 if final ? devenvModules then
@@ -222,15 +234,21 @@ nixDirInputs: let
                 else
                   [];
 
-              applyDevenvCfg = devenvCfg:
-                nixDirInputs.devenv.lib.mkShell {
-                  inherit pkgs;
-                  inputs = nixDirInputs;
-                  modules =
-                    devenvModules ++ [ devenvCfg ];
-                };
+              applyDevenvCfg = devShellName: devenvCfg:
+                let
+                  result =
+                    nixDirInputs.devenv.lib.mkShell {
+                      inherit pkgs;
+                      inputs = nixDirInputs;
+                      modules =
+                        (devenvModules ++ [(devenvPreCommitModule devShellName) devenvCfg]);
+                    };
+                in result // (
+                  {
+                    nixDirPreCommitInjected = true;
+                  });
             in
-              builtins.mapAttrs (_: cfg: applyDevenvCfg cfg) devenvsCfg
+              builtins.mapAttrs (name: cfg: applyDevenvCfg name cfg) devenvsCfg
           );
         });
 
@@ -282,6 +300,7 @@ nixDirInputs: let
                         devEnvCfg.overrideAttrs
                           (final: prev: {
                             shellHook = prev.shellHook + preCommitInstallationScript;
+                            nixDirPreCommitInjected = true;
                           });
                     }
                 )
