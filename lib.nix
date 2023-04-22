@@ -15,7 +15,7 @@ nixDirInputs: let
           builtins.attrValues
           (nixpkgs.lib.filterAttrs
             # select only the overlays to inject
-            (n: _: overlaysToInject ? n)
+            (n: _: builtins.hasAttr n overlaysToInject)
             self.overlays);
       }
     else
