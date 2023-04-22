@@ -1,6 +1,8 @@
+# nixDirInputs is the flake inputs from the nixDir project
 nixDirInputs: let
-  # getPkgs returns the nixpkgs repository for the given system with embedded
-  # overlays from the input flake.
+
+  # getPkgs returns the nixpkgs repository for the given system with optional
+  # embedded overlays from the self flake.
   getPkgs = overlaysToInject: system: {
     self,
     nixpkgs,
@@ -23,7 +25,8 @@ nixDirInputs: let
         inherit system;
       };
 
-  # runPreCommit
+  # runPreCommit returns the pre-commit-hooks run call for the
+  # nix/pre-commit.nix
   runPreCommit = root: inputs: pkgs: let
     inherit (pkgs) system;
     config0 = import "${root}/pre-commit.nix" system inputs pkgs;
@@ -34,11 +37,29 @@ nixDirInputs: let
   in
     nixDirInputs.pre-commit-hooks.lib.${system}.run config;
 
-  # eachDefaultSystemMapWithPkgs
+  # eachDefaultSystemMapWithPkgs imports nixpkgs with specified overlays for
+  # each given system
   eachSystemMapWithPkgs = overlaysToInject: systems: inputs: f:
     nixDirInputs.utils.lib.eachSystemMap systems (system: f (getPkgs overlaysToInject system inputs));
 
-  # importDirFiles
+  # importDirFiles imports directories using a given strategy. All the
+  # strategies involve providing the system and inputs of the flake into the
+  # file. The strategy could be one of the following:
+  #
+  # - withCallPackage
+  #
+  #   Imports the given nix file with a `pkgs.callPackage` call. This strategy
+  #   enforces that the third argument of the imported nix file must be an
+  #   attribute-set of required dependencies.
+  #
+  # - withPkgs
+  #
+  #   Uses the nixpkgs import as the third argument of the function.
+  #
+  # - withNoPkgs
+  #
+  #   No third argument is given to the imported nix file.
+  #
   importDirFiles = importStrategy: inputs: pkgs: path: let
     inherit (inputs.nixpkgs) lib;
 
@@ -101,12 +122,17 @@ nixDirInputs: let
   in
     entries;
 
+  # importPkgs is used to import the `nix/packages` directory
   importPkgs = inputs: pkgs: path: importDirFiles "withCallPackage" inputs pkgs path;
 
+  # importModules is used to import the `nix/modules/[devenv,nixos,home-manager]` directories
   importModules = inputs: path: importDirFiles "withNoPkgs" inputs null path;
 
+  # importShells is used to import the `nix/devShells` directory
   importShells = importPkgs;
 
+  # buildFlake is the only exported function of this API. It is the main entry
+  # point for nix flake authors to transform a nix directory into a nix flake
   buildFlake = {
     dirName ? "nix",
     injectPreCommit ? true,
