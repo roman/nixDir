@@ -206,7 +206,7 @@ nixDirInputs: let
                       modules = final.devenvModules;
                     in
                       builtins.foldl' (acc: moduleName:
-                        if pkgs.lib.hasAttrByPath [moduleName] modules then
+                        if pkgs.lib.hasAttr moduleName modules then
                           acc ++ [ modules."${moduleName}" ]
                         else
                           acc
