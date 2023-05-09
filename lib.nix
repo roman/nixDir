@@ -58,7 +58,12 @@ nixDirInputs: let
   #
   # - withNoPkgs
   #
-  #   No third argument is given to the imported nix file.
+  #   No packages argument is given to the imported nix file.
+  #
+  # - nixtTests
+  #
+  #   The imported file receives the flake's inputs and the nixt API to
+  #   create unit tests
   #
   importDirFiles = importStrategy: inputs: pkgs: path: let
     inherit (inputs.nixpkgs) lib;
@@ -115,7 +120,9 @@ nixDirInputs: let
             then import "${path}/${entryName}" pkgs.system inputs pkgs
             else if importStrategy == "withNoPkgs"
             then import "${path}/${entryName}" pkgs.system inputs
-            else builtins.abort "implementation error: invalid importStrategy ${importStrategy}";
+            else if importStrategy == "nixtTest"
+            then import "${path}/${entryName}" inputs { inherit (inputs.nixt.lib) describe it; }
+            else throw "implementation error: invalid importStrategy ${importStrategy}";
         })
       {}
       (nixSubDirNames ++ nixFiles);
@@ -130,6 +137,27 @@ nixDirInputs: let
 
   # importShells is used to import the `nix/devShells` directory
   importShells = importPkgs;
+
+  # importNixtTests is used to import the `nix/tests` directory
+  importNixtTests =
+    nixDir: inputs:
+    let
+      path = nixDir + "/nixt";
+      block = nixDirInputs.nixt.lib.block;
+      testPerFile = importDirFiles "nixtTest" inputs null path;
+      toPath = s: path + s;
+      blocks =
+        builtins.foldl'
+          (acc: fileName:
+            if builtins.typeOf testPerFile.${fileName} != "list" then
+              acc ++ [{ path = toPath "/${fileName}.nix"; suites = [ testPerFile.${fileName} ]; }]
+            else
+              acc ++ [{ path = toPath "/${fileName}.nix"; suites = testPerFile.${fileName}; }]
+          )
+          []
+          (builtins.attrNames testPerFile);
+    in
+      blocks;
 
   # buildFlake is the only exported function of this API. It is the main entry
   # point for nix flake authors to transform a nix directory into a nix flake
@@ -346,6 +374,21 @@ nixDirInputs: let
                 (builtins.attrNames devShellCfgs)
           );
         };
+
+    applyNixtTests =
+      applyOutput
+      (builtins.pathExists "${nixDir}/nixt")
+        (
+          let
+              testBlocks = importNixtTests nixDir inputs;
+          in
+            {
+              __nixt = inputs.nixt.lib.grow {
+                blocks = testBlocks;
+              };
+            }
+        );
+
   in
     builtins.foldl' (outputs: apply: apply outputs) {}
     # IMPORTANT: don't change the order of this apply functions unless is
@@ -360,6 +403,7 @@ nixDirInputs: let
       applyPreCommitLib
       applyLib
       applyOverlay
+      applyNixtTests
     ];
 in {
   inherit buildFlake;

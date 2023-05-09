@@ -7,6 +7,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
+    nixt.url = "github:nix-community/nixt";
 
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
@@ -22,35 +23,20 @@
 
   outputs = {
     nixpkgs,
+    nixt,
     utils,
     devenv,
     pre-commit-hooks,
     ...
-  } @ inputs: {
-    lib = import ./lib.nix inputs;
-    devShells = utils.lib.eachDefaultSystemMap (system: let
-      pkgs = import nixpkgs {inherit system;};
-      preCommitRun = pre-commit-hooks.lib.${system}.run {
-        src = ./.;
-        hooks = {
-          commitizen.enable = true;
-        };
+  } @ inputs:
+    let
+      lib = import ./lib.nix inputs;
+      inherit (lib) buildFlake;
+    in
+      buildFlake {
+        inherit inputs;
+        root = ./.;
+        injectPreCommit = true;
+        systems = ["x86_64-darwin" "x86_64-linux" "aarch64-darwin"];
       };
-    in {
-      default = pkgs.mkShell {
-        buildInputs = [
-          pkgs.figlet
-          pkgs.lolcat
-          pkgs.jq
-          (pkgs.bats.withLibraries (p: [p.bats-support p.bats-assert]))
-        ];
-
-        shellHook =
-          ''
-            figlet nixDir | lolcat
-          ''
-          + preCommitRun.shellHook;
-      };
-    });
-  };
 }
