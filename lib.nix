@@ -82,8 +82,8 @@ nixDirInputs: let
     checkDirFileConflict = entry:
       if builtins.pathExists "${entry}/default.nix" && builtins.pathExists "${entry}.nix"
       then
-        builtins.abort ''
-          dirNix is confused, it found two conflicting entries.
+        throw ''
+          nixDir is confused, it found two conflicting entries.
 
           One is a directory (${entry}/default.nix), and the other a file (${entry}.nix).
 
@@ -170,7 +170,7 @@ nixDirInputs: let
     systems,
     inputs,
   }: let
-    nixDir = "${root}/${dirName}";
+    nixDir = root + "/${dirName}";
 
     overlaysToInject =
       builtins.foldl' (acc: name: acc // {"${name}" = true;}) {} injectOverlays;
@@ -181,7 +181,7 @@ nixDirInputs: let
       else if builtins.typeOf injectPreCommit == "bool" then
         {}
       else
-        builtins.abort "error: injectPreCommit must be a string of a list of devShell/devenv profile names";
+        throw "error: injectPreCommit must be a string of a list of devShell/devenv profile names";
 
     shouldInjectPreCommit = devShellName:
       (builtins.typeOf injectPreCommit == "bool" && injectPreCommit)
@@ -296,7 +296,7 @@ nixDirInputs: let
                       ) [] injectDevenvModules
                   else
                     # expect a bool or a list of strings
-                    builtins.abort "error: injectDevenvModules must be a string of a list of devenv module names"
+                    throw "error: injectDevenvModules must be a string of a list of devenv module names"
                 else
                   [];
 
@@ -309,7 +309,7 @@ nixDirInputs: let
                       modules =
                         (devenvModules ++ [(devenvPreCommitModule devShellName) devenvCfg]);
                     };
-                in result // (
+                in result //
                   {
                     nixDirPreCommitInjected = shouldInjectPreCommit devShellName;
                   });
@@ -345,13 +345,13 @@ nixDirInputs: let
                 (
                   acc: devShellName:
                   # we cannot have a configuration for both devenv and devShell
-                  # with the same name so we abort as soon as we find a collision.
+                  # with the same name so we throw as soon as we find a collision.
                   if
                     builtins.pathExists "${nixDir}/devenvs/${devShellName}"
                     || builtins.pathExists "${nixDir}/devenvs/${devShellName}.nix"
                   then
-                    builtins.abort ''
-                    dirNix is confused, it found two conflicting files/directories.
+                    throw ''
+                    nixDir is confused, it found two conflicting files/directories.
 
                     One is an entry in `devShells/${devShellName}` and the other is `devenvs/${devShellName}`.
 
