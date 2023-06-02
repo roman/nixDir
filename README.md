@@ -19,6 +19,7 @@ lets you get back to your business.
 - [Third-Party Integrations](#third-party-integrations)
   - [devenv.sh](#devenv)
   - [pre-commit-hooks](#pre-commit-hooks)
+  - [nixt](#nixt)
 - [FAQ](#faq)
 
 <!-- markdown-toc end -->
@@ -97,7 +98,7 @@ file/directory will be the name of the exported package. For example:
 
 # packages receive the system, the flake inputs, and an attribute set with
 # required nixpkgs packages.
-system: inputs: { hello, writeShellScriptBin, makeWrapper, symlinkJoin }:
+inputs: { hello, writeShellScriptBin, makeWrapper, symlinkJoin }:
 
 # We are going to do an essential wrapping of the hello package, following steps
 # from: https://nixos.wiki/wiki/Nix_Cookbook#Wrapping_packages
@@ -228,7 +229,7 @@ an example, of a very basic devenv profile.
 ``` nix
 # nix/devenvs/my-devenv.nix
 
-system: inputs: { config, pkgs, ... }:
+inputs: { config, pkgs, ... }:
 
 {
    languages.go.enable = true;
@@ -367,7 +368,7 @@ entries. This is an optional functionality; to enable it, you must have a
 ``` nix
 # nix/pre-commit.nix
 
-system: inputs: pkgs:
+inputs: pkgs:
 
 {
   # root of the project
@@ -389,7 +390,7 @@ The file must receive three arguments, the current `system` platform, the flake
 #### Accessing the pre-commit hook explicitly
 
 Another side-effect that occurs when using the `nix/pre-commit.nix` is that
-`nixDir` appends a `preCommitRunHook` attribute to the flake's `lib`. This
+`nixDir` appends a `preCommitRunScript` attribute to the flake's `lib`. This
 attribute contains the pre-commit script, and it may be used as a value in other
 places (like a docker image). Following is an example on how to add the script
 in a docker image package:
@@ -397,7 +398,7 @@ in a docker image package:
 ``` nix
 # nix/packages/devenv-img.nix
 
-system: {self, ...}: {
+{self, ...}: {
   lib,
   dockerTools,
   buildEnv,
@@ -424,6 +425,33 @@ dockerTools.buildImage {
 }
 ```
 
+### [nixt](https://github.com/nix-community/nixt)
+
+Nixt is an attempt of unit tests for the nix programming language. When flake
+authors include the directory `nix/tests/nixt`, this utility will discover the
+tests and allow the `nixt` binary to run tests. Following is an example of a
+nixt test.
+
+``` nix
+{ self, ... } @ inputs: { describe, it }:
+
+let
+  input = { hello = true; };
+in
+[
+  (describe "hello world"
+    (it "must not be surprising"
+      # the second argument must be a boolean value, if false
+      # the test is considered an assertion error.
+      builtins.hasAttr "hello" input))
+]
+```
+
+To run the tests, make sure to include use the `injectNixtCheck` option and execute
+
+``` bash
+nix run .#nixt
+```
 
 ## FAQ
 
