@@ -39,7 +39,7 @@ directory with the following `flake.nix`:
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     nixDir = {
-      url = "github:roman/nixDir";
+      url = "github:roman/nixDir/v2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -419,7 +419,7 @@ dockerTools.buildImage {
     WorkingDir = "/tmp";
     Env = [
       # Inject pre-commit script to your container environment
-      "PRE_COMMIT_HOOK=${self.lib.preCommitRunHook.${system}}"
+      "PRE_COMMIT_HOOK=${self.lib.preCommitRunScript.${system}}"
     ];
   };
 }
