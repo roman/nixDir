@@ -3,7 +3,7 @@
 setup() {
     bats_load_library bats-support
     bats_load_library bats-assert
-    cd example/myproj
+    cd example/v2/myproj
     DIR="$( cd "$( dirname "$BATS_TEST_FILENAME" )" >/dev/null 2>&1 && pwd )"
 }
 
@@ -13,7 +13,7 @@ get_lib() {
 
 @test "lib functions are defined" {
     run get_lib
-    assert_output '["getPkgs","preCommitRunHook","sayHello"]'
+    assert_output '["getPkgs","preCommitRunScript","sayHello"]'
 }
 
 get_package_archs() {

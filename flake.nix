@@ -21,22 +21,23 @@
     };
   };
 
-  outputs = {
-    nixpkgs,
-    nixt,
-    utils,
-    devenv,
-    pre-commit-hooks,
-    ...
-  } @ inputs:
+  outputs =
+    { nixpkgs
+    , nixt
+    , utils
+    , devenv
+    , pre-commit-hooks
+    , ...
+    } @ inputs:
     let
-      lib = import ./lib.nix inputs;
+      lib = import ./nix/lib.nix inputs;
       inherit (lib) buildFlake;
     in
-      buildFlake {
-        inherit inputs;
-        root = ./.;
-        injectPreCommit = true;
-        systems = ["x86_64-darwin" "x86_64-linux" "aarch64-darwin"];
-      };
+    buildFlake {
+      inherit inputs;
+      root = ./.;
+      injectPreCommit = true;
+      injectNixtCheck = true;
+      systems = [ "x86_64-darwin" "x86_64-linux" "aarch64-darwin" ];
+    };
 }
