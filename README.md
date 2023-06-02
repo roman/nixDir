@@ -1,3 +1,16 @@
+
+# :warning: Notice 
+
+The `main` branch is not going to get extended beyond it's current capabilities.
+New functionality is going to be available in the [`/v2`
+branch](https://github.com/roman/nixDir/tree/v2).
+
+There are slight non-backward compatible differences between `main` and `v2`,
+feel free to check the
+[examples](https://github.com/roman/nixDir/tree/v2/example) to learn more about
+how to use `nixDir`.
+
+
 # nixDir
 
 `nixDir` is a library that transforms a convention oriented directory structure
