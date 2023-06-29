@@ -40,6 +40,9 @@ let
       inherit systems;
       pathExists = lib.hasSuffix "nix/packages";
       importPackages = mkImportPackages pkgNames;
+      packages = (pkgs: {
+        flkPkg = pkgs.hello;
+      });
     };
 
   specs = [
@@ -50,6 +53,25 @@ let
       };
       assertion = flk:
         lib.hasAttrByPath [ "packages" "x86_64-linux" "mypkg" ] flk;
+    }
+    {
+      it = "respects packages coming from the buildFlake call";
+      args = {
+        pkgNames = [ ];
+      };
+      assertion = flk:
+        lib.hasAttrByPath [ "packages" "x86_64-linux" "flkPkg" ] flk;
+    }
+    {
+      it = "fails when same entry is on both places";
+      args = {
+        pkgNames = [ "flkPkg" ];
+      };
+      assertion = flk:
+        let
+          eval = builtins.tryEval (flk.packages.x86_64-linux.flkPkg);
+        in
+          !eval.success;
     }
     {
       it = "filter packages with a matching system";

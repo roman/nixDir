@@ -29,9 +29,9 @@ get_package_name() {
     nix flake show --json 2> /dev/null | jq -c '.packages."x86_64-linux" | keys | sort'
 }
 
-@test "package is defined" {
+@test "packages from multiple sources are defined" {
     run get_package_name
-    assert_output '["hello"]'
+    assert_output '["flkPkg","hello"]'
 }
 
 get_devshells() {
