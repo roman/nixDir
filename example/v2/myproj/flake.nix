@@ -39,5 +39,8 @@
       packages = (pkgs: {
         flkPkg = pkgs.lolcat;
       });
+      # generates an "all" package that includes every package in the flake. This
+      # is useful when uploading packages to a remote nix-store (defaults to false).
+      generateAllPackage = true;
     };
 }

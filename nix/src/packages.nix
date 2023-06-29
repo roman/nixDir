@@ -7,6 +7,12 @@
                                    # packages is a function defined at the
                                    # flake.nix file
                                  , packages ? (_pkgs: { })
+                                   # generateAllPackage indicates if we want to
+                                   # create a meta package that includes all the
+                                   # packages of the flake; this is useful when
+                                   # we want to build all the packages to copy
+                                   # them to a remote nix-store
+                                 , generateAllPackage ? false
                                  , ...
                                  } @ buildFlakeCfg:
 
@@ -66,8 +72,21 @@ let
               else
                 builtins.foldl' step { } (builtins.attrNames allPkgs);
 
+            result =
+              # create a package that includes _all_ the packages of the
+              # flake. This is useful when uploading packages to a nix-store
+              if generateAllPackage then
+                resultPkgs // {
+                  all = pkgs.symlinkJoin {
+                    name = "all";
+                    paths = lib.attrValues resultPkgs;
+                  };
+                }
+              else
+                resultPkgs;
+
           in
-          resultPkgs
+          result
         );
       };
 in

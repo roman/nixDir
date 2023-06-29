@@ -31,7 +31,10 @@ get_package_name() {
 
 @test "packages from multiple sources are defined" {
     run get_package_name
-    assert_output '["flkPkg","hello"]'
+    # all is generated via the generateAllPackage option
+    # flkPkg is defined in the packages entry
+    # hello is defined in the ./nix/packages directory
+    assert_output '["all","flkPkg","hello"]'
 }
 
 get_devshells() {
