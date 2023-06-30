@@ -285,8 +285,8 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1688065004,
-        "narHash": "sha256-C9Z9/ayYk+qrPmje76dEXDGoGMwnzKo7Gitzdng7odo=",
+        "lastModified": 1688147004,
+        "narHash": "sha256-HG1PGojAfVLXbTVCKEpG12joNQUeUA+3j36CZs728a4=",
         "type": "git",
         "url": "file:../../../"
       },

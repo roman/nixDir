@@ -7,3 +7,4 @@ tmp/
 .pre-commit-config.yaml
 .direnv
 .envrc
+*.backup

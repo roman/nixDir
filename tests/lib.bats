@@ -4,11 +4,17 @@ setup() {
     bats_load_library bats-support
     bats_load_library bats-assert
     cd example/v2/myproj
+    cp flake.lock flake.lock.backup
+    nix flake lock --update-input nixDir
     DIR="$( cd "$( dirname "$BATS_TEST_FILENAME" )" >/dev/null 2>&1 && pwd )"
 }
 
+teardown() {
+   cp flake.lock.backup flake.lock
+}
+
 get_lib() {
-    nix eval --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in builtins.attrNames flk.lib' --json 2> /dev/null | jq -cr 'sort'
+    nix eval --accept-flake-config --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in builtins.attrNames flk.lib' --json 2> /dev/null | jq -cr 'sort'
 }
 
 @test "lib functions are defined" {
@@ -17,7 +23,7 @@ get_lib() {
 }
 
 get_package_archs() {
-    nix flake show --json 2> /dev/null | jq -c '.packages | keys | sort'
+    nix flake --accept-flake-config show --json 2> /dev/null | jq -c '.packages | keys | sort'
 }
 
 @test "packages are defined for each architecture" {
@@ -26,7 +32,7 @@ get_package_archs() {
 }
 
 get_package_name() {
-    nix flake show --json 2> /dev/null | jq -c '.packages."x86_64-linux" | keys | sort'
+    nix flake --accept-flake-config show --json 2> /dev/null | jq -c '.packages."x86_64-linux" | keys | sort'
 }
 
 @test "packages from multiple sources are defined" {
@@ -38,7 +44,7 @@ get_package_name() {
 }
 
 get_devshells() {
-    nix flake show --json 2> /dev/null | jq -c '.devShells."x86_64-linux" | keys | sort'
+    nix flake --accept-flake-config show --json 2> /dev/null | jq -c '.devShells."x86_64-linux" | keys | sort'
 }
 
 @test "regular shell and devenv shell are defined" {
@@ -47,7 +53,7 @@ get_devshells() {
 }
 
 get_devenv_devshell() {
-    nix eval --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in flk.devShells.x86_64-linux.devenv.config.devenv.flakesIntegration'
+    nix eval --accept-flake-config --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in flk.devShells.x86_64-linux.devenv.config.devenv.flakesIntegration'
 }
 
 @test "devenv shell is a devenv.nix shell" {
@@ -56,7 +62,7 @@ get_devenv_devshell() {
 }
 
 get_overlays() {
-    nix eval --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in builtins.attrNames flk.overlays' --json | jq -cr 'sort'
+    nix eval --accept-flake-config --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in builtins.attrNames flk.overlays' --json | jq -cr 'sort'
 }
 
 @test "overlays are defined" {
@@ -66,7 +72,7 @@ get_overlays() {
 
 check_overlayed_was_applied() {
     # cd example/myproj
-    nix eval --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); pkgs = flk.lib.getPkgs builtins.currentSystem; in builtins.hasAttr "my-hello" pkgs' --json
+    nix eval --accept-flake-config --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); pkgs = flk.lib.getPkgs builtins.currentSystem; in builtins.hasAttr "my-hello" pkgs' --json
 }
 
 @test "specified overlay gets applied to project's nixpkgs" {
@@ -75,7 +81,7 @@ check_overlayed_was_applied() {
 }
 
 check_devenv_module_was_applied() {
-    nix eval --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); config = flk.devShells.x86_64-linux.devenv.config.services; in builtins.hasAttr "my-hello" config' --json
+    nix eval --accept-flake-config --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); config = flk.devShells.x86_64-linux.devenv.config.services; in builtins.hasAttr "my-hello" config' --json
 
 }
 
@@ -94,7 +100,7 @@ check_pre_commit_hook_on_vanilla_devshell() {
 }
 
 check_pre_commit_hook_on_devenv_devshell() {
-    nix eval --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in flk.devShells.x86_64-linux.devenv.nixDirPreCommitInjected' --json
+    nix eval --accept-flake-config --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in flk.devShells.x86_64-linux.devenv.nixDirPreCommitInjected' --json
 }
 
 @test "pre-commit-hook gets injected on devenev devShells" {
@@ -103,7 +109,7 @@ check_pre_commit_hook_on_devenv_devshell() {
 }
 
 check_no_pre_commit_hook_on_vanilla_devshell() {
-    nix eval --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in flk.devShells.x86_64-linux.other.nixDirPreCommitInjected' --json
+    nix eval --accept-flake-config --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in flk.devShells.x86_64-linux.other.nixDirPreCommitInjected' --json
 }
 
 @test "pre-commit-hook doesn't get injected on unspecified vanilla devShell" {
@@ -112,7 +118,7 @@ check_no_pre_commit_hook_on_vanilla_devshell() {
 }
 
 check_no_pre_commit_hook_on_devenv_devshell() {
-    nix eval --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in flk.devShells.x86_64-linux.devenv-other.nixDirPreCommitInjected' --json
+    nix eval --accept-flake-config --impure --expr 'let flk = builtins.getFlake (builtins.toString ./.); in flk.devShells.x86_64-linux.devenv-other.nixDirPreCommitInjected' --json
 }
 
 @test "pre-commit-hook doesn't get injected on unspecified devenv" {
