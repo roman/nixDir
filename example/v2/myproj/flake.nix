@@ -8,7 +8,7 @@
 
   inputs = {
     nixDir = {
-      url = "git+file:../../../";
+      url = "git+file:./../../../";
     };
     nixpkgs.follows = "nixDir/nixpkgs";
   };
@@ -34,5 +34,13 @@
       # use a list of overlay names (defined in nix/overlays.nix) that we want injected
       # to the packages we import across all files in this project.
       injectOverlays = [ "default" ];
+      # specify packages in the flake itself if you want to avoid using the file
+      # system; packages support the systems provided in the systems parameter.
+      packages = (pkgs: {
+        flkPkg = pkgs.lolcat;
+      });
+      # generates an "all" package that includes every package in the flake. This
+      # is useful when uploading packages to a remote nix-store (defaults to false).
+      generateAllPackage = true;
     };
 }
