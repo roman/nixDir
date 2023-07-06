@@ -11,6 +11,9 @@
                                        , importNixtBlocks ? null
                                        , importDevenvShells ? null
                                        , importDevenvModules ? null
+                                       , importDarwinModules ? null
+                                       , importNixosModules ? null
+                                       , importHomeManagerModules ? null
                                        , importPreCommitConfig ? null
                                        , importPackages ? null
                                        , importOverlays ? null
@@ -134,15 +137,23 @@ let
   # _importDevShells is used to import the nixDir/devShells directory
   _importDevShells =
     pkgs: importDirFiles pkgs "withPkgs" (nixDir + "/devShells");
+  #
+  # _importDevenvShells is used to import the nixDir/devenvs directory
+  _importDevenvShells =
+    importDirFiles null "withNoPkgs" (nixDir + "/devenvs");
 
   # _importDevenvModules is used to import the nixDir/modules/devenv directory
   _importDevenvModules =
     importDirFiles null "withNoPkgs" (nixDir + "/modules/devenv");
 
-  # _importDevenvShells is used to import the nixDir/devenvs directory
-  _importDevenvShells =
-    importDirFiles null "withNoPkgs" (nixDir + "/devenvs");
+  _importDarwinModules =
+    importDirFiles null "withNoPkgs" (nixDir + "/modules/darwin");
 
+  _importNixosModules =
+    importDirFiles null "withNoPkgs" (nixDir + "/modules/nixos");
+
+  _importHomeManagerModules =
+    importDirFiles null "withNoPkgs" (nixDir + "/modules/home-manager");
 
   _importOverlays =
     importFile (nixDir + "/overlays.nix") inputs;
@@ -187,6 +198,24 @@ in
       _importDevenvModules
     else
       importDevenvModules;
+
+  importDarwinModules =
+    if importDarwinModules == null then
+      _importDarwinModules
+    else
+      importDarwinModules;
+
+  importNixosModules =
+    if importNixosModules == null then
+      _importNixosModules
+    else
+      importNixosModules;
+
+  importHomeManagerModules =
+    if importHomeManagerModules == null then
+      _importHomeManagerModules
+    else
+      importHomeManagerModules;
 
   importPreCommitConfig =
     if importPreCommitConfig == null then

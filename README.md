@@ -19,6 +19,7 @@ lets you get back to your business.
   - [The `packages` output](#the-packages-output)
   - [The `lib` output](#the-lib-output)
   - [The `overlays` output](#the-overlays-output)
+  - [Various modules outputs](#various-modules-outputs)
   - [Passthrough keys](#passthrough-keys)
 - [Third-Party Integrations](#third-party-integrations)
   - [devenv.sh](#devenv)
@@ -265,6 +266,25 @@ will be included in every `nixpkgs` import used within your flake exports.
 
 > :information_source: Given that flake overlays should be system agnostic, the
 > `nix/overlays.nix` file does not receive the `system` argument.
+
+### Various modules outputs
+
+The nix eco-system provides many different kinds of
+[modules](https://nixos.wiki/wiki/NixOS_modules). The module outputs currently
+supported by `nixDir` are:
+
+* `nixosModules` -- it allow authors to write modules supported by NixOS in the
+  `nix/modules/nixos` directory.
+
+* `darwinModules` -- it allow authors to write modules supported by
+  [`nix-darwin`](https://github.com/LnL7/nix-darwin) in the `nix/modules/darwin`
+  directory.
+
+* `homeManagerModules` -- it allow authors to write modules supported by
+  [`home-manager`](https://github.com/nix-community/home-manager) in the
+  `nix/modules/home-manager` directory.
+
+* `devenvModules` -- see [devenv](#devenvmodules-ouput) section for details
 
 
 ### Passthrough keys
