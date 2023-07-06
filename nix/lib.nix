@@ -9,6 +9,7 @@ let
       devenvs = import ./src/devenvs.nix nixDirInputs cfg;
       nixt = import ./src/nixt.nix nixDirInputs cfg;
       passthrough = import ./src/passthrough.nix nixDirInputs cfg;
+      flkModules = import ./src/modules.nix nixDirInputs cfg;
       lib = import ./src/lib.nix nixDirInputs cfg;
 
       modules = [
@@ -18,6 +19,9 @@ let
         devenvs.applyDevenvShells
         devenvs.applyDevenvModules
         nixt.applyNixtTests
+        flkModules.applyDarwinModules
+        flkModules.applyNixosModules
+        flkModules.applyHomeManagerModules
         passthrough.applyPassthroughKeys
         lib.applyLib
       ];
