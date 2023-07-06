@@ -89,8 +89,8 @@ Following are the various conventions that you can use with `nixDir`
 
 ## Outputs
 
-> :information_source: The examples bellow assume the configured `nixDir` is
-> called `nix`
+> **Note**
+> The examples bellow assume the configured `nixDir` is called `nix`
 
 ### The `packages` output
 
@@ -123,7 +123,8 @@ third argument is an attribute set with all the required dependencies for the
 package (e.g. `callPackage`
 [convention](https://nixos.org/guides/nix-pills/callpackage-design-pattern.html)).
 
-> :warning: Packages could either be a nix file or a directory, nixDir will fail
+> **Warning**
+> Packages could either be a nix file or a directory, nixDir will fail
 > if it finds both a directory and a file with the same name.
 
 #### Remove packages from a particular `system` platform
@@ -199,8 +200,9 @@ inputs: {
 The `lib.nix` file must export a function that receives the flake inputs as
 parameters.
 
-> :information_source: Given that library functions should be system agnostic,
-> the `nix/lib.nix` file does not receive the `system` argument.
+> **Note**
+> Given that library functions should be system agnostic, the
+> `nix/lib.nix` file does not receive the `system` argument.
 
 ### The `overlays` output
 
@@ -264,7 +266,8 @@ In the example above, the `develop` overlay (which was defined on your
 `nix/overlays.nix` file and includes the overlays of some of your flake inputs)
 will be included in every `nixpkgs` import used within your flake exports.
 
-> :information_source: Given that flake overlays should be system agnostic, the
+> **Note**
+> Given that flake overlays should be system agnostic, the
 > `nix/overlays.nix` file does not receive the `system` argument.
 
 ### Various modules outputs
@@ -370,7 +373,8 @@ the `devenv` profile.
 nix develop .#my-devenv
 ```
 
-> :warning: `devenv` modules and `devShells` work on the devShells namespace,
+> **Warning**
+> `devenv` modules and `devShells` work on the devShells namespace,
 > nixDir will fail if there is an entry on both `nix/devenvs` and
 > `nix/devShells` directories with the same name.
 
@@ -497,9 +501,9 @@ inputs: pkgs:
 The file must receive three arguments, the current `system` platform, the flake
 `inputs` and an attribute-set with the `nixpkgs` pkgs.
 
-> :information_source: As opposed to other `nixDir` components, the
-> `nix/pre-commit.nix` receives _all_ packages rather than relying on the
-> `callPackage`
+> **Note**
+> As opposed to other `nixDir` components, the `nix/pre-commit.nix`
+> receives _all_ packages rather than relying on the `callPackage`
 > [convention](https://nixos.org/guides/nix-pills/callpackage-design-pattern.html)
 
 #### Accessing the pre-commit hook explicitly
