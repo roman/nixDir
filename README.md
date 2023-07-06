@@ -295,6 +295,9 @@ systems expects (e.g. {pkgs, config, ...}). The validity of the settings may
 depend on which backend the module is intended for (`nix-darwin`, `nixos` or
 `home-manager`).
 
+> **Note** Given that modules should be system agnostic, files in the
+> `nix/modules/<backend>` do not receive the `system` argument.
+
 
 ### Passthrough keys
 
@@ -566,7 +569,8 @@ in
 ]
 ```
 
-To run the tests, make sure to include use the `injectNixtCheck` option and execute
+To run the tests, make sure to specify the `injectNixtCheck` option in your
+`buildFlake` call and then execute in the terminal
 
 ``` bash
 nix run .#nixt
@@ -574,7 +578,7 @@ nix run .#nixt
 
 ## FAQ
 
-### Should I use this lib?
+### Should I nixDir?
 
 If you are maintaining a project with nix flakes that has a big `flake.nix` file
 (>500 LOC) or that involves several nix files, you may benefit from this
