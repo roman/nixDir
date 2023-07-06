@@ -8,6 +8,7 @@ let
       devshells = import ./src/devshells.nix nixDirInputs cfg;
       devenvs = import ./src/devenvs.nix nixDirInputs cfg;
       nixt = import ./src/nixt.nix nixDirInputs cfg;
+      passthrough = import ./src/passthrough.nix nixDirInputs cfg;
       lib = import ./src/lib.nix nixDirInputs cfg;
 
       modules = [
@@ -17,6 +18,7 @@ let
         devenvs.applyDevenvShells
         devenvs.applyDevenvModules
         nixt.applyNixtTests
+        passthrough.applyPassthroughKeys
         lib.applyLib
       ];
     in

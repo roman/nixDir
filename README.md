@@ -19,6 +19,7 @@ lets you get back to your business.
   - [The `packages` output](#the-packages-output)
   - [The `lib` output](#the-lib-output)
   - [The `overlays` output](#the-overlays-output)
+  - [Passthrough keys](#passthrough-keys)
 - [Third-Party Integrations](#third-party-integrations)
   - [devenv.sh](#devenv)
   - [pre-commit-hooks](#pre-commit-hooks)
@@ -218,6 +219,45 @@ will be included in every `nixpkgs` import used within your flake exports.
 
 > :information_source: Given that flake overlays should be system agnostic, the
 > `nix/overlays.nix` file does not receive the `system` argument.
+
+
+### Passthrough keys
+
+Sometimes it makes sense to not have a dedicated file for the configuration of
+some flake outputs; the most common situation where authors usually want to
+declare a resource in-place is for `nixConfigurations`, `darwinConfigurations`
+and `homeManagerConfigurations`. Given they must be simple declarations, you can
+inline them into your `buildFlake` call. Following is an example:
+
+``` nix
+{
+
+  inputs = {
+    # ...
+  };
+
+  outputs = { nixDir, nixpkgs, nix-darwin, ... } @ inputs:
+    nixDir.lib.buildFlake {
+      systems = [ "x86_64-linux" "aarch64-darwin" ];
+
+      homeManagerConfigurations = {
+         # ... (your configuration here)
+      };
+
+      darwinConfigurations = {
+        myMacbook =  nix-darwin.lib.darwinSystem {
+          # ... (your configuration here)
+        };
+      };
+
+      nixosConfigurations = {
+        myLaptop = nixpkgs.lib.nixosSystem {
+          # ... (your configuration here)
+        };
+      };
+    };
+}
+```
 
 ## Third-Party Integrations
 
