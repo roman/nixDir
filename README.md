@@ -117,10 +117,9 @@ symlinkJoin {
 }
 ```
 
-Your package file must receive three arguments. The first argument is the
-current `system` platform, the second argument are the flake's `inputs`, and the
-third argument is an attribute set with all the required dependencies for the
-package (e.g. `callPackage`
+Your package file must receive two arguments. The first argument is the flake's
+`inputs`, and the second argument is an attribute set with all the required
+dependencies for the package (e.g. `callPackage`
 [convention](https://nixos.org/guides/nix-pills/callpackage-design-pattern.html)).
 
 > **Warning**
@@ -186,8 +185,8 @@ Example:
 
 ### The `lib` output
 
-To add a `lib` export to your flake, include a `nix/lib.nix` inside your.For
-example:
+To add a `lib` export to your flake, include a `nix/lib.nix` inside your `nix`
+directory. For example:
 
 ``` nix
 # nix/lib.nix 
@@ -264,7 +263,7 @@ packages across your flake. Following is an example:
 
 In the example above, the `develop` overlay (which was defined on your
 `nix/overlays.nix` file and includes the overlays of some of your flake inputs)
-will be included in every `nixpkgs` import used within your flake exports.
+will be included in every `nixpkgs` import used within your flake outputs.
 
 > **Note**
 > Given that flake overlays should be system agnostic, the
@@ -288,6 +287,22 @@ supported by `nixDir` are:
   `nix/modules/home-manager` directory.
 
 * `devenvModules` -- see [devenv](#devenvmodules-output) section for details
+
+Following is an example of `nix-darwin` module:
+
+``` nix
+# nix/modules/darwin/fonts.nix
+
+inputs: {pkgs, ...}:
+
+{
+    fonts.fontDir.enable = true;
+    fonts.fonts = with pkgs; [
+      recursive
+      (nerdfonts.override { fonts = [ "JetBrainsMono" "FiraCode" "DroidSansMono" ]; })
+    ];
+};
+```
 
 The module file must receive two arguments. The first argument contains your
 flake's inputs, and the second argument is the attribute set that general module
@@ -477,7 +492,9 @@ it on your flake:
 }
 ```
 
-We do not recommend overriding `devenv` flake dependencies to skip cache misses.
+> **Warning**
+> We do not recommend overriding `devenv` flake dependencies as this would cause
+> remote cache misses and it would produce *really* slow build times.
 
 ### [pre-commit-hooks](https://github.com/cachix/pre-commit-hooks.nix#seamless-integration-of-pre-commit-git-hooks-with-nix)
 <span id="pre-commit-hooks"></span>
