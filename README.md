@@ -284,7 +284,7 @@ supported by `nixDir` are:
   [`home-manager`](https://github.com/nix-community/home-manager) in the
   `nix/modules/home-manager` directory.
 
-* `devenvModules` -- see [devenv](#devenvmodules-ouput) section for details
+* `devenvModules` -- see [devenv](#devenvmodules-output) section for details
 
 
 ### Passthrough keys
