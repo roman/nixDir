@@ -1,7 +1,7 @@
 # nixDir
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[!Github Action Tests Status](https://github.com/roman/nixDir/actions/workflows/pre-commit.yml/badge.svg)
+[![Github Action Tests Status](https://github.com/roman/nixDir/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/roman/nixDir/actions/workflows/pre-commit.yml)
 
 `nixDir` is a library that transforms a convention oriented directory structure
 into a [nix flake](https://nixos.wiki/wiki/Flakes).
