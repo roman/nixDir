@@ -286,6 +286,12 @@ supported by `nixDir` are:
 
 * `devenvModules` -- see [devenv](#devenvmodules-output) section for details
 
+The module file must receive two arguments. The first argument contains your
+flake's inputs, and the second argument is the attribute set that general module
+systems expects (e.g. {pkgs, config, ...}). The validity of the settings may
+depend on which backend the module is intended for (`nix-darwin`, `nixos` or
+`home-manager`).
+
 
 ### Passthrough keys
 
