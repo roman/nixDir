@@ -26,6 +26,8 @@ let
   inherit (nixpkgs) lib;
   utils = import ./utils.nix nixDirInputs buildFlakeCfg;
 
+  inherit (utils) getFlakeInput;
+
   checkDirFileConflict = entry:
     if pathExists "${entry}/default.nix" && pathExists "${entry}.nix"
     then
@@ -158,11 +160,14 @@ let
   _importOverlays =
     importFile (nixDir + "/overlays.nix") inputs;
 
+  nixt =
+    getFlakeInput "nixt" "github:nix-community/nixt";
+
   # importNixtBlocks is used to import the nixDir/tests/nixt directory
   _importNixtBlocks =
     let
       path = nixDir + "/tests/nixt";
-      block = nixDirInputs.nixt.lib.block;
+      block = nixt.lib.block;
       testPerFile = importDirFiles null "nixtTest" path;
       toPath = s: path + s;
       nixtBlocks =
