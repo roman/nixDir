@@ -6,7 +6,7 @@
                                  , pathExists ? builtins.pathExists
                                    # packages is a function defined at the
                                    # flake.nix file
-                                 , packages ? (_pkgs: { })
+                                 , packages ? null
                                    # generateAllPackage indicates if we want to
                                    # create a meta package that includes all the
                                    # packages of the flake; this is useful when
@@ -27,15 +27,28 @@ let
 
   applyPackages =
     applyFlakeOutput
-      (pathExists "${nixDir}/packages")
+      (pathExists "${nixDir}/packages" ||
+        generateAllPackage ||
+        packages != null)
       {
         packages = eachSystemMapWithPkgs systems (pkgs:
           let
-            # packages coming from the buildFlake invokation
-            cfgPkgs = packages pkgs;
+            getPkgsFromConfig =
+              # packages is a function received as an argument in the buildFlake
+              # invokation
+              if packages == null then
+                (_pkgs: { })
+              else
+                packages;
+
+            cfgPkgs = getPkgsFromConfig pkgs;
 
             # packages coming from the ./nix/pacakges directory
-            dirPkgs = importPackages pkgs;
+            dirPkgs =
+              if pathExists "${nixDir}/packages" then
+                importPackages pkgs
+              else
+                { };
 
             allPkgs = cfgPkgs // dirPkgs;
 
