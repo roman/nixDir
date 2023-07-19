@@ -1,4 +1,4 @@
-{ self, nixpkgs, nix-darwin, ... } @ nixDirInputs: { describe, it }:
+{ self, nixpkgs, ... } @ nixDirInputs: { describe, it }:
 
 let
   inherit (nixpkgs) lib;
@@ -9,7 +9,7 @@ let
       root = ./.;
       inherit systems;
       inputs = {
-        inherit nixpkgs nix-darwin;
+        inherit nixpkgs;
         self = { };
       };
     } // extraKeys;
@@ -26,9 +26,7 @@ let
             };
           };
           darwinConfigurations = {
-            darwinMachine = nix-darwin.lib.darwinSystem {
-              system = "aarch64-darwin";
-            };
+            darwinMachine = { };
           };
         };
       };

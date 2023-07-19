@@ -20,10 +20,6 @@
       inputs.pre-commit-hooks.follows = "pre-commit-hooks";
     };
 
-    nix-darwin = {
-      url = "github:LnL7/nix-darwin";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
