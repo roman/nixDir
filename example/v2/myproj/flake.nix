@@ -10,7 +10,10 @@
     nixDir = {
       url = "git+file:./../../../";
     };
+    # use the same dependencies as the root flake
     nixpkgs.follows = "nixDir/nixpkgs";
+    devenv.follows = "nixDir/devenv";
+    nixt.follows = "nixDir/nixt";
   };
 
   outputs = { nixDir, ... } @ inputs:
@@ -25,7 +28,14 @@
       # specify the directory with our nix config is called nix. This is the
       # default value, the declaration is here for demonstration purposes.
       dirName = "nix";
-      # inject the pre-commit of this project to all devShells and devenv configurations
+      # inject the pre-commit of this project to all devShells and devenv
+      # configurations.
+      #
+      # By default the pre-commit hooks will always get injected to all shells.
+      #
+      # We can specify which devShells should not have the pre-commit hooks by
+      # omitting their name on the list, or we can set the value to `false` so
+      # that no shell has the pre-commit hooks injected.
       injectPreCommit = [ "default" "devenv" ];
       # use a list of module names (e.g. nix/modules/devenv/my-hello-service) or
       # a boolean value to signal we want all our devenv modules imported when
@@ -42,5 +52,11 @@
       # generates an "all" package that includes every package in the flake. This
       # is useful when uploading packages to a remote nix-store (defaults to false).
       generateAllPackage = true;
+      # Specify various configurations. These keys are pass-through to the
+      # output flake
+      #
+      # nixConfigurations = { };
+      # darwinConfigurations = {  };
+      # homeManagerConfigurations = {  };
     };
 }
