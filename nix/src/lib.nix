@@ -25,12 +25,20 @@ in
 
     in
     applyFlakeOutput
-      (pathExists "${nixDir}/lib.nix")
+      true
       {
-        lib = (
-          getPkgsExt //
-          preCommitExt //
-          importFile "${nixDir}/lib.nix" nixDirInputs
-        );
+        lib =
+          let
+            userLib =
+              if pathExists "${nixDir}/lib.nix" then
+                importFile "${nixDir}/lib.nix" nixDirInputs
+              else
+                { };
+          in
+          (
+            getPkgsExt //
+            preCommitExt //
+            userLib
+          );
       };
 }
