@@ -1,7 +1,7 @@
 { nixpkgs, ... } @ nixDirInputs: { inputs
                                  , root
                                  , systems
-                                 , injectPreCommit ? [ ]
+                                 , injectPreCommit ? true
                                  , dirName ? "nix"
                                  , nixDir ? "${root}/${dirName}"
                                  , pathExists ? builtins.pathExists
@@ -12,10 +12,15 @@ let
   inherit (nixpkgs) lib;
   inherit (inputs) self;
 
+
   utils = import ./utils.nix nixDirInputs buildFlakeCfg;
   importer = import ./importer.nix nixDirInputs buildFlakeCfg;
 
   inherit (importer) importPreCommitConfig getEntriesForPath;
+  inherit (utils) getFlakeInput;
+
+  pre-commit-hooks =
+    getFlakeInput "pre-commit-hooks" "github:cachix/pre-commit-hooks.nix";
 
   availableDevShells =
     builtins.foldl'
@@ -111,7 +116,7 @@ let
 
   # preCommitRunScript prints the execution of the pre-commit script
   preCommitRunScript = system:
-    nixDirInputs.pre-commit-hooks.lib.${system}.run (preCommitDevShellConfig system);
+    pre-commit-hooks.lib.${system}.run (preCommitDevShellConfig system);
 
   preCommitInstallationScript = system:
     (preCommitRunScript system).shellHook;
@@ -122,7 +127,7 @@ let
   preCommitInstallationScriptForShell = system: devShellName:
     let
       run =
-        nixDirInputs.pre-commit-hooks.lib.${system}.run (preCommitDevShellConfig system);
+        pre-commit-hooks.lib.${system}.run (preCommitDevShellConfig system);
     in
     if shouldInjectPreCommit system devShellName then
       run.shellHook
