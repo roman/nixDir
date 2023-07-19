@@ -7,6 +7,24 @@ let
   inherit (inputs) self nixpkgs;
   inherit (nixpkgs) lib;
 
+  getFlakeInput = inputName: inputUrl:
+    if lib.hasAttr inputName inputs then
+      inputs.${inputName}
+    else
+      throw ''
+        nixDir requires you to add the following setup to your `flake.nix`:
+
+        {
+          inputs = {
+            # ...
+            ${inputName}.url = "${inputUrl}";
+            # ...
+          };
+          # ...
+        }
+      '';
+
+
   # doesOverlayExists check if the given overlayName is present in the flake's
   # overlays attribute-set.
   doesOverlayExist = overlayName:
@@ -92,5 +110,5 @@ let
 
 in
 {
-  inherit getPkgs eachSystemMapWithPkgs applyFlakeOutput;
+  inherit getPkgs getFlakeInput eachSystemMapWithPkgs applyFlakeOutput;
 }
