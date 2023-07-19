@@ -85,6 +85,13 @@ let
               else
                 builtins.foldl' step { } (builtins.attrNames allPkgs);
 
+            shellPkgs =
+              # shellPkgs are all the devShells derivations, these allow us to
+              # cache shells the same way we do packages.
+              lib.concatMapAttrs
+                (name: shell: { "${name}-shell" = shell.inputDerivation; })
+                inputs.self.devShells.${pkgs.system};
+
             result =
               # create a package that includes _all_ the packages of the
               # flake. This is useful when uploading packages to a nix-store
@@ -92,7 +99,7 @@ let
                 resultPkgs // {
                   all = pkgs.symlinkJoin {
                     name = "all";
-                    paths = lib.attrValues resultPkgs;
+                    paths = lib.attrValues (resultPkgs // shellPkgs);
                   };
                 }
               else
