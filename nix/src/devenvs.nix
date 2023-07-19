@@ -15,8 +15,11 @@ let
 
   inherit (nixpkgs) lib;
   inherit (precommit) shouldInjectPreCommit preCommitDevenvModule;
-  inherit (utils) applyFlakeOutput eachSystemMapWithPkgs;
+  inherit (utils) getFlakeInput applyFlakeOutput eachSystemMapWithPkgs;
   inherit (importer) importDevenvShells importDevenvModules;
+
+  devenv =
+    getFlakeInput "devenv" "github:cachix/devenv";
 
   allDevenvModules = importDevenvModules;
 
@@ -91,7 +94,7 @@ let
             devenvConfigs = importDevenvShells;
 
             mkDevenvShell = modules:
-              nixDirInputs.devenv.lib.mkShell {
+              devenv.lib.mkShell {
                 inherit pkgs modules inputs;
               };
 

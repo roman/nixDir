@@ -1,4 +1,4 @@
-{ self, nixpkgs, ... } @ nixDirInputs: { describe, it }:
+{ self, nixpkgs, devenv, ... } @ nixDirInputs: { describe, it }:
 
 let
   inherit (nixpkgs) lib;
@@ -81,7 +81,7 @@ let
       # parameter used inside the buildFlake configuration, mock
       # it as not to require a real flake to test code
       inputs = {
-        inherit nixpkgs;
+        inherit nixpkgs devenv;
         # this is used for meta checks
         self = {
           devShells.${system} =
