@@ -285,14 +285,14 @@
         "utils": "utils"
       },
       "locked": {
-        "lastModified": 1688147004,
-        "narHash": "sha256-HG1PGojAfVLXbTVCKEpG12joNQUeUA+3j36CZs728a4=",
+        "lastModified": 1689793222,
+        "narHash": "sha256-50uOIhKvzLP6PB94qBCJ5l+ld7Xc16O0RTX/vDPLL6k=",
         "type": "git",
-        "url": "file:../../../"
+        "url": "file:./../../../"
       },
       "original": {
         "type": "git",
-        "url": "file:../../../"
+        "url": "file:./../../../"
       }
     },
     "nixago": {
@@ -534,10 +534,18 @@
     },
     "root": {
       "inputs": {
+        "devenv": [
+          "nixDir",
+          "devenv"
+        ],
         "nixDir": "nixDir",
         "nixpkgs": [
           "nixDir",
           "nixpkgs"
+        ],
+        "nixt": [
+          "nixDir",
+          "nixt"
         ]
       }
     },
