@@ -13,7 +13,6 @@ let
       lib = import ./src/lib.nix nixDirInputs cfg;
 
       modules = [
-        packages.applyPackages
         overlays.applyOverlays
         devshells.applyDevShells
         devenvs.applyDevenvShells
@@ -23,6 +22,7 @@ let
         flkModules.applyNixosModules
         flkModules.applyHomeManagerModules
         passthrough.applyPassthroughKeys
+        packages.applyPackages
         lib.applyLib
       ];
     in
