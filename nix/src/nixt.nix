@@ -4,7 +4,7 @@
                                        , dirName ? "nix"
                                        , nixDir ? "${root}/${dirName}"
                                        , pathExists ? builtins.pathExists
-                                       , injectNixtCheck ? false
+                                       , injectNixtCheck ? true
                                        , ...
                                        } @ buildFlakeCfg:
 
@@ -14,7 +14,10 @@ let
   utils = import ./utils.nix nixDirInputs buildFlakeCfg;
 
   inherit (importer) importNixtBlocks;
-  inherit (utils) applyFlakeOutput eachSystemMapWithPkgs;
+  inherit (utils) getFlakeInput applyFlakeOutput eachSystemMapWithPkgs;
+
+  nixt =
+    getFlakeInput "nixt" "github:nix-community/nixt";
 
   applyNixtTests =
     applyFlakeOutput
@@ -24,7 +27,7 @@ let
           testBlocks = importNixtBlocks;
         in
         {
-          __nixt = inputs.nixt.lib.grow {
+          __nixt = nixt.lib.grow {
             blocks = testBlocks;
           };
         } //
@@ -42,11 +45,13 @@ let
                       fi
                       ${nixt.packages.${pkgs.system}.default}/bin/nixt -vv
                     '';
+
+                    out = {
+                      type = "app";
+                      program = "${program}";
+                    };
                   in
-                  {
-                    type = "app";
-                    program = "${program}";
-                  };
+                  lib.deepSeq out out;
               }
             );
           }

@@ -8,7 +8,7 @@ let
   root = ./.;
 
   mkBuildFlakeCfg =
-    { injectNixtCheck ? false
+    { injectNixtCheck ? true
     }:
     {
       root = ./.;
@@ -23,19 +23,23 @@ let
 
   specs = [
     {
-      it = "generates an app when injectNixtCheck is true";
-      args = {
-        injectNixtCheck = true;
-      };
-      assertion =
-        lib.hasAttrByPath [ "apps" "x86_64-linux" "nixt" ];
-    }
-    {
-      it = "generates a __nixt field";
+      it = "doesn't generate a nixt app";
       args = {
         injectNixtCheck = false;
       };
+      assertion = flk:
+        !(lib.hasAttrByPath [ "apps" "x86_64-linux" "nixt" ] flk);
+    }
+    {
+      it = "generates a __nixt field";
+      args = { };
       assertion = lib.hasAttrByPath [ "__nixt" ];
+    }
+    {
+      it = "generates a nixt app";
+      args = { };
+      assertion =
+        lib.hasAttrByPath [ "apps" "x86_64-linux" "nixt" ];
     }
   ];
 in
@@ -48,9 +52,7 @@ in
           (it spec.it
             (
               let
-                buildFlakeCfg = mkBuildFlakeCfg {
-                  inherit (spec.args) injectNixtCheck;
-                };
+                buildFlakeCfg = mkBuildFlakeCfg spec.args;
                 sut = import "${self}/nix/src/nixt.nix" nixDirInputs buildFlakeCfg;
                 flk = sut.applyNixtTests { };
               in
