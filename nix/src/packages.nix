@@ -99,7 +99,8 @@ let
                 resultPkgs // {
                   all = pkgs.symlinkJoin {
                     name = "all";
-                    paths = lib.attrValues (resultPkgs // shellPkgs);
+                    buildInputs = lib.attrValues shellPkgs;
+                    paths = lib.attrValues resultPkgs;
                   };
                 }
               else
