@@ -89,7 +89,13 @@ let
               # shellPkgs are all the devShells derivations, these allow us to
               # cache shells the same way we do packages.
               lib.concatMapAttrs
-                (name: shell: { "${name}-shell" = shell.inputDerivation; })
+                (name: shell:
+                  # skip devenv shells. They must be skipped given they are
+                  # impure and caching them wouldn't make much sense.
+                  if lib.hasPrefix "devenv-" shell.name then
+                    { }
+                  else
+                    { "${name}-shell" = shell.inputDerivation; })
                 inputs.self.devShells.${pkgs.system};
 
             result =
