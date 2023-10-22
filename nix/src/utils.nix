@@ -1,5 +1,6 @@
 nixDirInputs: { inputs
               , injectOverlays ? [ ]
+              , nixpkgsConfig ? { }
               , ...
               } @ buildFlakeCfg:
 
@@ -76,6 +77,7 @@ let
       import nixpkgs
         {
           inherit system;
+          config = nixpkgsConfig;
           overlays =
             builtins.attrValues
               (lib.filterAttrs
@@ -85,6 +87,7 @@ let
     else
       import nixpkgs {
         inherit system;
+        config = nixpkgsConfig;
       };
 
   # eachSystemMapWithPkgs calls the `flake-util.lib.eachSystemMapWith` utility,
