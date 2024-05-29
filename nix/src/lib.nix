@@ -1,4 +1,5 @@
 nixDirInputs: { root
+              , inputs
               , dirName ? "nix"
               , pathExists ? builtins.pathExists
               , importFile ? (path: import path)
@@ -31,7 +32,7 @@ in
           let
             userLib =
               if pathExists "${nixDir}/lib.nix" then
-                importFile "${nixDir}/lib.nix" nixDirInputs
+                importFile "${nixDir}/lib.nix" inputs
               else
                 { };
           in
