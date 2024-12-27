@@ -11,6 +11,7 @@ let
     "darwinConfigurations"
     "nixosConfigurations"
     "homeManagerConfigurations"
+    "colmena"
   ];
 
   applyPassthroughKeys =
