@@ -1,5 +1,5 @@
 _nixDirFlake:
-{ lib, inputs, config, ... }:
+{ lib, inputs, config, system, ... }:
 let
   cfg = config.nixDir;
   path = "${cfg.root}/${cfg.dirName}";
@@ -25,14 +25,14 @@ in {
         default = "nix";
       };
 
-      injectDevenvModules = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
+      installDevenvModules = lib.mkOption {
+        type = lib.types.functionTo lib.types.unspecified;
         description =
-          "a list of devenv module names that we want to import into our devenv configuration";
-        default = [ ];
+          "a function that returns a list of devenv modules that we want to import into our devenv configuration";
+        default = (_: [ ]);
       };
 
-      injectAllDevenvModules = lib.mkOption {
+      installAllDevenvModules = lib.mkOption {
         type = lib.types.bool;
         description = "automatically import all devenv module names";
         default = false;
@@ -44,6 +44,28 @@ in {
           "build a package that contains all the packages in the flake, these packages include all the declared devShells";
         default = false;
       };
+
+      generateDefaultOverlay = lib.mkOption {
+	type = lib.types.bool;
+	description = 
+          "build an overlay that contains all the packages in the flake";
+	default = true;
+      };
+
+      installDefaultOverlay = lib.mkOption {
+	type = lib.types.bool;
+	description =
+          "if generateDefaultOverlay is true, it will automatically inject the default overlay to the pkgs import";
+	default = true;
+      };
+
+      installOverlays = lib.mkOption {
+	type = lib.types.listOf lib.types.unspecified;
+	description = 
+	   "install given list of overlays to pkgs import";
+	default = [];
+      };
+
     };
   };
 
@@ -113,7 +135,15 @@ in {
             { };
         in lib.mkMerge [ acc { inherit devenvModules; } ];
 
+      addDefaultOverlay = acc:
+        lib.mkMerge [ acc (lib.mkIf (cfg.generateDefaultOverlay || cfg.installDefaultOverlay) {
+	  overlays = {
+	    default = _final: prev: inputs.self.packages.${prev.stdenv.hostPlatform.system};
+	  };
+	})];
+
     in builtins.foldl' (acc: f: f acc) { } [
+      addDefaultOverlay
       addNixOSModules
       addNixOSConfigurations
       addNixDarwinModules
@@ -178,16 +208,36 @@ in {
             else
               { };
           in lib.mkMerge [
-            (lib.mkIf ((builtins.length cfg.injectDevenvModules) != 0) {
-              devenv.modules = builtins.attrValues
-                (lib.getAttrs cfg.injectDevenvModules devenvModules);
-            })
-            (lib.mkIf cfg.injectAllDevenvModules {
+	    {
+              devenv.modules = cfg.installDevenvModules devenvModules;
+            }
+            (lib.mkIf cfg.installAllDevenvModules {
               devenv.modules = builtins.attrValues devenvModules;
             })
             acc
           ];
+
+	installOverlays = acc:
+           let
+	     overlayInstall =
+	       lib.mkIf 
+		 (cfg.installDefaultOverlay ||
+		   (builtins.length (cfg.installOverlays) > 0))
+		 ({
+		   _module.args.pkgs = import inputs.nixpkgs {
+		     inherit system;
+		     overlays =
+		       (if cfg.installDefaultOverlay then
+                     [ inputs.self.overlays.default ]
+		       else
+		     []) ++ cfg.installOverlays;
+		   };
+		 });
+	   in
+	     lib.mkMerge [ acc overlayInstall ];
+
       in builtins.foldl' (acc: f: f acc) { } ([ addPackages ]
+        ++ lib.optionals (inputs ? nixpkgs) [ installOverlays ]
         ++ lib.optionals (inputs ? devenv) [ addDevenvs addDevenvModules ]);
   };
 }

@@ -16,7 +16,7 @@
     # or use the settings defined in the nix/modules/devenv/my-hello-service
     # directory.
     #
-    # This can only work if the injectDevenvModules is defined
+    # This can only work if the installDevenvModules is defined
     services.my-hello.enable = true;
   };
 }

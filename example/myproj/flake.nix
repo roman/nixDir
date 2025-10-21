@@ -18,28 +18,45 @@
       systems = [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" ];
       imports = [ inputs.devenv.flakeModule inputs.nixDir.flakeModule ];
       nixDir = {
-        # Enable discovery of flake outputs from a directory (required).
+        # (Required) Enable discovery of flake outputs from a directory (required).
         enable = true;
 
-        # Specify the root of the current flake for automatic wiring of various flake
-        # outputs (required).
+        # (Required) Specify the root of the current flake for automatic wiring of various
+        # flake outputs.
         root = ./.;
 
-        # Specify the directory with our nix config is called nix. The value "nix" is the
-        # default value, the declaration is here for demonstration purposes (optional).
+        # (Optional) Specify the directory with our nix config is called nix. The value
+        # "nix" is the default value, the declaration is here for demonstration purposes.
         dirName = "nix";
 
-        # Use a list of module names (e.g. nix/modules/devenv/my-hello-service) to signal we
-        # want this devenv module imported when we have an entry in the nix/devenvs
-        # directory (optional) .
-        injectDevenvModules = [ "my-hello-service" ];
+        # (Optional) Receive attribute set of devenv modules defined in the flake and specify which
+        # devenv modules should be automatically included by default on devenvs entries from
+        # this flake.
+        installDevenvModules = mods: [ mods.my-hello-service ];
 
-        # Another option available for the same purpose is injectAllDevenvmodules.
-        # injectAllDevenvModules = true;
+        # (Optional) Another option available for is to install _all_ devenv modules defined
+        # in this flake using the installAllDevenvModules.
+        # installAllDevenvModules = true;
 
-        # Generates an "all" package that includes every package in the flake. This
-        # is useful when uploading packages to a remote nix-store (optional, defaults to false).
+        # (Optional) Generates an "all" package that includes every package in the
+        # flake. This is useful when uploading packages to a remote nix-store (optional,
+        # defaults to false).
         generateAllPackage = true;
+
+	# (Optional) Generates a default overlay that contains all the packages defined in
+	# this flake.
+	generateDefaultOverlay = true;
+
+	# (Optional) Have all the packages defined in this flake available in the
+	# flake-part's perSystem pkgs argument for this flake. This setting sets
+	# generateDefaultOverlay to true automatically.
+	installDefaultOverlay = true;
+
+	# (Optional) Have all the packages from the overlays in the given list available in
+	# the perSystem pkgs argument for this flake.
+	installOverlays = [
+	  inputs.devenv.overlays.default
+	];
       };
     };
 }
