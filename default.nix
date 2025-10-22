@@ -45,24 +45,24 @@ in {
         default = false;
       };
 
-      generateDefaultOverlay = lib.mkOption {
+      generateFlakeOverlay = lib.mkOption {
 	type = lib.types.bool;
 	description = 
           "build an overlay that contains all the packages in the flake";
 	default = true;
       };
 
-      installDefaultOverlay = lib.mkOption {
+      installFlakeOverlay = lib.mkOption {
 	type = lib.types.bool;
 	description =
-          "if generateDefaultOverlay is true, it will automatically inject the default overlay to the pkgs import";
+          "install the flake overlay to the pkgs in flake-parts modules";
 	default = true;
       };
 
       installOverlays = lib.mkOption {
 	type = lib.types.listOf lib.types.unspecified;
 	description = 
-	   "install given list of overlays to pkgs import";
+	   "install given list of overlays to the pkgs in flake-parts modules";
 	default = [];
       };
 
@@ -135,15 +135,15 @@ in {
             { };
         in lib.mkMerge [ acc { inherit devenvModules; } ];
 
-      addDefaultOverlay = acc:
-        lib.mkMerge [ acc (lib.mkIf (cfg.generateDefaultOverlay || cfg.installDefaultOverlay) {
+      addFlakeOverlay = acc:
+        lib.mkMerge [ acc (lib.mkIf (cfg.generateFlakeOverlay || cfg.installFlakeOverlay) {
 	  overlays = {
-	    default = _final: prev: inputs.self.packages.${prev.stdenv.hostPlatform.system};
+	    flake = _final: prev: inputs.self.packages.${prev.stdenv.hostPlatform.system};
 	  };
 	})];
 
     in builtins.foldl' (acc: f: f acc) { } [
-      addDefaultOverlay
+      addFlakeOverlay
       addNixOSModules
       addNixOSConfigurations
       addNixDarwinModules
@@ -221,14 +221,14 @@ in {
            let
 	     overlayInstall =
 	       lib.mkIf 
-		 (cfg.installDefaultOverlay ||
+		 (cfg.installFlakeOverlay ||
 		   (builtins.length (cfg.installOverlays) > 0))
 		 ({
 		   _module.args.pkgs = import inputs.nixpkgs {
 		     inherit system;
 		     overlays =
-		       (if cfg.installDefaultOverlay then
-                     [ inputs.self.overlays.default ]
+		       (if cfg.installFlakeOverlay then
+		     [ inputs.self.overlays.flake ]
 		       else
 		     []) ++ cfg.installOverlays;
 		   };
