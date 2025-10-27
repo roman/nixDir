@@ -46,24 +46,30 @@ in {
       };
 
       generateFlakeOverlay = lib.mkOption {
-	type = lib.types.bool;
-	description = 
+        type = lib.types.bool;
+        description =
           "build an overlay that contains all the packages in the flake";
-	default = true;
+        default = true;
       };
 
       installFlakeOverlay = lib.mkOption {
-	type = lib.types.bool;
-	description =
+        type = lib.types.bool;
+        description =
           "install the flake overlay to the pkgs in flake-parts modules";
-	default = true;
+        default = true;
       };
 
       installOverlays = lib.mkOption {
-	type = lib.types.listOf lib.types.unspecified;
-	description = 
-	   "install given list of overlays to the pkgs in flake-parts modules";
-	default = [];
+        type = lib.types.listOf lib.types.unspecified;
+        description =
+          "install given list of overlays to the pkgs in flake-parts modules";
+        default = [ ];
+      };
+
+      nixpkgsConfig = lib.mkOption {
+        type = lib.types.attrs;
+        description = "add configuration to nixpkgs import";
+        default = { };
       };
 
     };
@@ -136,11 +142,15 @@ in {
         in lib.mkMerge [ acc { inherit devenvModules; } ];
 
       addFlakeOverlay = acc:
-        lib.mkMerge [ acc (lib.mkIf (cfg.generateFlakeOverlay || cfg.installFlakeOverlay) {
-	  overlays = {
-	    flake = _final: prev: inputs.self.packages.${prev.stdenv.hostPlatform.system};
-	  };
-	})];
+        lib.mkMerge [
+          acc
+          (lib.mkIf (cfg.generateFlakeOverlay || cfg.installFlakeOverlay) {
+            overlays = {
+              flake = _final: prev:
+                inputs.self.packages.${prev.stdenv.hostPlatform.system};
+            };
+          })
+        ];
 
     in builtins.foldl' (acc: f: f acc) { } [
       addFlakeOverlay
@@ -208,33 +218,31 @@ in {
             else
               { };
           in lib.mkMerge [
-	    {
-              devenv.modules = cfg.installDevenvModules devenvModules;
-            }
+            { devenv.modules = cfg.installDevenvModules devenvModules; }
             (lib.mkIf cfg.installAllDevenvModules {
               devenv.modules = builtins.attrValues devenvModules;
             })
             acc
           ];
 
-	installOverlays = acc:
-           let
-	     overlayInstall =
-	       lib.mkIf 
-		 (cfg.installFlakeOverlay ||
-		   (builtins.length (cfg.installOverlays) > 0))
-		 ({
-		   _module.args.pkgs = import inputs.nixpkgs {
-		     inherit system;
-		     overlays =
-		       (if cfg.installFlakeOverlay then
-		     [ inputs.self.overlays.flake ]
-		       else
-		     []) ++ cfg.installOverlays;
-		   };
-		 });
-	   in
-	     lib.mkMerge [ acc overlayInstall ];
+        installOverlays = acc:
+          let
+            shouldOverridePkgs = cfg.installFlakeOverlay
+              || (builtins.length (cfg.installOverlays) > 0)
+              || (cfg.nixpkgsConfig != { });
+
+            overlayInstall = lib.mkIf shouldOverridePkgs ({
+              _module.args.pkgs = import inputs.nixpkgs ({
+                inherit system;
+                config = cfg.nixpkgsConfig;
+                overlays = (if cfg.installFlakeOverlay then
+                  [ inputs.self.overlays.flake ]
+                else
+                  [ ]) ++ cfg.installOverlays;
+              });
+            });
+
+          in lib.mkMerge [ acc overlayInstall ];
 
       in builtins.foldl' (acc: f: f acc) { } ([ addPackages ]
         ++ lib.optionals (inputs ? nixpkgs) [ installOverlays ]
