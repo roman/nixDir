@@ -21,8 +21,12 @@
         flakeModule = import ./. self;
         flakeModules.default = import ./. self;
       };
-      perSystem = { pkgs, lib, ... }: {
+      perSystem = { pkgs, lib, config, ... }: {
         devenv.shells.default = {
+          devenv.root = builtins.toString ./.;
+
+          packages = [ config.treefmt.build.wrapper ];
+
           git-hooks.hooks = {
             deadnix.enable = true;
             nixfmt-classic.enable = true;
