@@ -36,7 +36,9 @@
 
         # Test suite configuration
         nixtest.suites = {
-          # Placeholder - will be populated as we create test files
+          "conflict-detection" = import ./tests/conflict-detection-tests.nix {
+            inherit pkgs lib inputs;
+          };
         };
       };
     };

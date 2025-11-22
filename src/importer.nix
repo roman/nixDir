@@ -170,5 +170,6 @@ let
 in {
   inherit importPackages importDevenvs importNixOSModules
     importNixOSConfigurations importDarwinModules importDarwinConfigurations
-    importHomeManagerModules importDevenvModules;
+    importHomeManagerModules importDevenvModules importDirWithoutInputs
+    importDir importDirWithInputs;
 }
