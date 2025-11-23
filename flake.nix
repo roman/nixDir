@@ -51,6 +51,9 @@
           "integration" = import ./tests/integration-tests.nix {
             inherit pkgs lib inputs;
           };
+          "error-handling" = import ./tests/error-handling-tests.nix {
+            inherit pkgs lib inputs;
+          };
         };
       };
     };
