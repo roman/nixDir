@@ -57,7 +57,7 @@ in
         let
           envs = importer.importDevenvs "${devShellsPath}/devenvs";
         in
-        envs ? test-env && builtins.isAttrs envs.test-env;
+        envs ? test-env && builtins.isFunction envs.test-env;
     }
 
     # Test 5: devenvs can be imported from with-inputs directory
@@ -69,7 +69,7 @@ in
         let
           envs = importer.importDevenvs "${devShellsPath}/with-inputs/devenvs";
         in
-        envs ? with-inputs-env && builtins.isAttrs envs.with-inputs-env;
+        envs ? with-inputs-env && builtins.isFunction envs.with-inputs-env;
     }
 
     # Test 6: Conflict between devShells and devenvs with same name
