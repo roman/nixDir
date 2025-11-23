@@ -17,19 +17,25 @@ flake know get resolved easily.
 ```
 nix/
 ├── packages/              # Portable packages (standard callPackage signature)
+├── devshells/            # Dev shells (mkShell with inputs and pkgs)
+├── devenvs/              # Devenv shells (devenv configuration)
 ├── modules/
 │   ├── nixos/            # Portable NixOS modules
 │   ├── darwin/           # Portable nix-darwin modules
-│   └── home-manager/     # Portable home-manager modules
+│   ├── home-manager/     # Portable home-manager modules
+│   └── devenv/           # Portable devenv modules
 ├── configurations/
 │   ├── nixos/            # Portable NixOS configurations
 │   └── darwin/           # Portable nix-darwin configurations
 └── with-inputs/          # Non-portable versions that receive flake inputs
     ├── packages/         # Packages that need inputs
+    ├── devshells/        # Dev shells that need inputs
+    ├── devenvs/          # Devenv shells (standard devenv config)
     ├── modules/
     │   ├── nixos/        # NixOS modules that need inputs
     │   ├── darwin/       # nix-darwin modules that need inputs
-    │   └── home-manager/ # home-manager modules that need inputs
+    │   ├── home-manager/ # home-manager modules that need inputs
+    │   └── devenv/       # Devenv modules (standard devenv modules)
     └── configurations/
         ├── nixos/        # NixOS configurations that need inputs
         └── darwin/       # nix-darwin configurations that need inputs
@@ -143,6 +149,78 @@ inputs: {
 }
 ```
 
+### DevShells
+
+DevShells provide simple development environments using `pkgs.mkShell`. All devShells (both regular and with-inputs) receive `inputs` and `pkgs` arguments.
+
+#### DevShell (Standard Pattern)
+
+```nix
+# nix/devshells/default.nix
+inputs: pkgs:
+
+pkgs.mkShell {
+  buildInputs = [ pkgs.hello pkgs.cowsay ];
+  shellHook = ''
+    echo "Welcome to my dev shell!"
+  '';
+}
+```
+
+#### DevShell (With Inputs)
+
+```nix
+# nix/with-inputs/devshells/my-shell.nix
+inputs: pkgs:
+
+pkgs.mkShell {
+  buildInputs = [
+    pkgs.hello
+    inputs.some-flake.packages.${pkgs.system}.custom-tool
+  ];
+  shellHook = ''
+    echo "Dev shell with custom tool from flake input"
+  '';
+}
+```
+
+### DevEnvs
+
+DevEnvs use the devenv framework for richer development environments. DevEnvs in both regular and with-inputs directories use the same signature.
+
+#### DevEnv (Standard Pattern)
+
+```nix
+# nix/devenvs/default.nix
+{ pkgs, ... }:
+
+{
+  packages = [ pkgs.git pkgs.nodejs ];
+
+  languages.python = {
+    enable = true;
+    version = "3.11";
+  };
+}
+```
+
+#### DevEnv (With Inputs - Same Directory)
+
+```nix
+# nix/with-inputs/devenvs/my-env.nix
+{ pkgs, ... }:
+
+{
+  packages = [ pkgs.git ];
+
+  languages.rust.enable = true;
+}
+```
+
+**Note:** DevEnvs in `with-inputs/devenvs/` use the same signature as regular devenvs (`{ pkgs, ... }: {...}`). The `with-inputs` directory simply provides organizational separation for devenvs that are specific to this flake's context, without actually passing `inputs` to the files.
+
+**Important:** DevShell and DevEnv names must be unique across both types since devenv creates devShells internally. You cannot have a devShell named "default" and a devenv named "default" - nixDir will detect this conflict and throw an error.
+
 ## Conflict Detection
 
 nixDir validates that the same name does not appear in both the regular directory and the
@@ -207,6 +285,10 @@ nix/
 | NixOS Module | `{ pkgs, config, ... }: {...}` | `inputs: { pkgs, config, ... }: {...}` |
 | Package | `{ dep1, dep2, ... }: derivation` | `inputs: { dep1, dep2, ... }: derivation` |
 | Configuration | `{ system, modules, ... }` | `inputs: { system, modules, ... }` |
+| DevShell | `inputs: pkgs: mkShell {...}` | `inputs: pkgs: mkShell {...}` |
+| DevEnv | `{ pkgs, ... }: {...}` | `{ pkgs, ... }: {...}` |
+
+**Note:** DevShells always receive both `inputs` and `pkgs` (in both regular and with-inputs directories). DevEnvs use the standard devenv module signature in both locations.
 
 
 ## FAQ
@@ -232,3 +314,22 @@ or move the files.
 **Q: How do I access inputs in a with-inputs file?**
 A: Your file receives `inputs` as the first parameter. Use it like
 `inputs.some-flake.packages.${pkgs.system}.foo`.
+
+**Q: What's the difference between devShells and devEnvs?**
+A: DevShells use `pkgs.mkShell` for simple development environments. DevEnvs use the devenv
+framework for richer features like language support, services, and pre-commit hooks. DevShells
+are simpler and more portable, while devEnvs provide more functionality.
+
+**Q: Can I have both a devShell and devEnv with the same name?**
+A: No! Since devenv creates devShells internally, names must be unique across both devShells
+and devenvs. nixDir will detect this conflict and throw an error.
+
+**Q: Do devShells in regular vs with-inputs directories have different signatures?**
+A: No, devShells always use the same signature `inputs: pkgs: mkShell {...}` in both locations.
+The `with-inputs/` directory is just for organization when you want to use flake inputs in your
+shell.
+
+**Q: Why don't devenvs in with-inputs receive inputs?**
+A: DevEnvs use the standard devenv module signature `{ pkgs, ... }: {...}` regardless of
+location. The `with-inputs/devenvs/` directory is for organizational purposes to separate
+project-specific devenvs from portable ones.
