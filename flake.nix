@@ -50,6 +50,11 @@
           "integration" = import ./tests/integration-tests.nix {
             inherit pkgs lib inputs;
           };
+
+          # Tests for with-inputs directory pattern and conflict detection.
+          "with-inputs" = import ./tests/with-inputs-tests.nix {
+            inherit pkgs lib inputs;
+          };
         };
       };
     };

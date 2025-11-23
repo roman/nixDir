@@ -148,6 +148,51 @@ test_overlay_generated() {
   fi
 }
 
+# Test: Conflict detection works between regular and with-inputs
+test_conflict_detection() {
+  run_test "Conflict detection throws error for duplicate names"
+
+  cd "$PROJECT_ROOT"
+
+  # Try to build a flake that uses the conflict fixture
+  # We expect this to fail with a conflict error message
+  local output
+  if output=$(nix eval --json \
+    --impure \
+    --expr '
+      let
+        flake = builtins.getFlake "path:'"$PROJECT_ROOT"'";
+        importer = import ('"$PROJECT_ROOT"' + "/src/importer.nix") {
+          pkgs = null;
+          lib = flake.inputs.nixpkgs.lib;
+          inputs = flake.inputs;
+        };
+
+        checkConflicts = outputType: regular: withInputs:
+          let
+            conflicts = builtins.filter (name: regular ? ${"\${name}"}) (builtins.attrNames withInputs);
+            hasConflicts = builtins.length conflicts > 0;
+          in
+            if hasConflicts then
+              throw "Found conflicts: ${"\${builtins.concatStringsSep \", \" conflicts}"}"
+            else
+              regular // withInputs;
+
+        regularModules = importer.importNixOSModules ('"$PROJECT_ROOT"' + "/tests/fixtures/with-inputs-conflict/modules/nixos");
+        withInputsModules = importer.importDirWithInputs ('"$PROJECT_ROOT"' + "/tests/fixtures/with-inputs-conflict/with-inputs/modules/nixos");
+      in
+        checkConflicts "modules/nixos" regularModules withInputsModules
+    ' 2>&1); then
+    echo "Expected conflict error but evaluation succeeded"
+    echo "Output: $output"
+    test_failed "Conflict detection throws error for duplicate names"
+  else
+    if assert_contains "Found conflicts: conflicting" "$output" "Error should mention the conflicting entry"; then
+      test_passed "Conflict detection throws error for duplicate names"
+    fi
+  fi
+}
+
 # Main test execution
 main() {
   echo "========================================"
@@ -160,6 +205,7 @@ main() {
   test_devshells_eval
   test_hello_package_builds
   test_overlay_generated
+  test_conflict_detection
 
   # Print summary
   echo ""

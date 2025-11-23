@@ -3,6 +3,29 @@ _nixDirFlake:
 let
   cfg = config.nixDir;
   path = "${cfg.root}/${cfg.dirName}";
+
+  # checkConflicts validates that there are no overlapping keys between
+  # regular and with-inputs directories. Having the same name in both
+  # locations is likely a mistake by the flake author.
+  checkConflicts = outputType: regular: withInputs:
+    let
+      conflicts = builtins.filter (name: regular ? ${name}) (builtins.attrNames withInputs);
+      hasConflicts = builtins.length conflicts > 0;
+    in
+      if hasConflicts then
+        throw ''
+          nixDir found conflicting ${outputType} entries in both regular and with-inputs directories:
+          ${lib.concatStringsSep ", " conflicts}
+
+          Each entry should exist in either the regular directory OR the with-inputs directory, not both.
+
+          Regular: ${cfg.dirName}/${outputType}/
+          With-inputs: ${cfg.dirName}/with-inputs/${outputType}/
+
+          Please move or rename the conflicting entries.
+        ''
+      else
+        regular // withInputs;
 in {
   options = {
     nixDir = {
@@ -85,60 +108,109 @@ in {
       addNixOSModules = acc:
         let
           nixosModulesPath = "${path}/modules/nixos";
-          nixosModules = if builtins.pathExists nixosModulesPath then {
-            nixosModules = importer.importNixOSModules nixosModulesPath;
-          } else
+          withInputsNixosModulesPath = "${path}/with-inputs/modules/nixos";
+
+          regularModules = if builtins.pathExists nixosModulesPath then
+            importer.importNixOSModules nixosModulesPath
+          else
             { };
-        in lib.mkMerge [ acc nixosModules ];
+
+          withInputsModules = if builtins.pathExists withInputsNixosModulesPath then
+            importer.importDirWithInputs withInputsNixosModulesPath
+          else
+            { };
+
+          allModules = checkConflicts "modules/nixos" regularModules withInputsModules;
+        in lib.mkMerge [ acc { nixosModules = allModules; } ];
 
       addNixOSConfigurations = acc:
         let
           nixosConfigurationsPath = "${path}/configurations/nixos";
-          nixosConfigurations =
-            if builtins.pathExists nixosConfigurationsPath then {
-              nixosConfigurations =
-                importer.importNixOSConfigurations nixosConfigurationsPath;
-            } else
-              { };
-        in lib.mkMerge [ acc nixosConfigurations ];
+          withInputsNixosConfigurationsPath = "${path}/with-inputs/configurations/nixos";
+
+          regularConfigs = if builtins.pathExists nixosConfigurationsPath then
+            importer.importNixOSConfigurations nixosConfigurationsPath
+          else
+            { };
+
+          withInputsConfigs = if builtins.pathExists withInputsNixosConfigurationsPath then
+            importer.importNixOSConfigurationsWithInputs withInputsNixosConfigurationsPath
+          else
+            { };
+
+          allConfigs = checkConflicts "configurations/nixos" regularConfigs withInputsConfigs;
+        in lib.mkMerge [ acc { nixosConfigurations = allConfigs; } ];
 
       addNixDarwinModules = acc:
         let
           nixDarwinModulesPath = "${path}/modules/darwin";
-          darwinModules = if builtins.pathExists nixDarwinModulesPath then {
-            darwinModules = importer.importDarwinModules nixDarwinModulesPath;
-          } else
+          withInputsDarwinModulesPath = "${path}/with-inputs/modules/darwin";
+
+          regularModules = if builtins.pathExists nixDarwinModulesPath then
+            importer.importDarwinModules nixDarwinModulesPath
+          else
             { };
-        in lib.mkMerge [ acc darwinModules ];
+
+          withInputsModules = if builtins.pathExists withInputsDarwinModulesPath then
+            importer.importDirWithInputs withInputsDarwinModulesPath
+          else
+            { };
+
+          allModules = checkConflicts "modules/darwin" regularModules withInputsModules;
+        in lib.mkMerge [ acc { darwinModules = allModules; } ];
 
       addNixDarwinConfigurations = acc:
         let
           nixDarwinConfigurationsPath = "${path}/configurations/darwin";
-          darwinConfigurations =
-            if builtins.pathExists nixDarwinConfigurationsPath then {
-              darwinConfigurations =
-                importer.importDarwinConfigurations nixDarwinConfigurationsPath;
-            } else
-              { };
-        in lib.mkMerge [ acc darwinConfigurations ];
+          withInputsDarwinConfigurationsPath = "${path}/with-inputs/configurations/darwin";
+
+          regularConfigs = if builtins.pathExists nixDarwinConfigurationsPath then
+            importer.importDarwinConfigurations nixDarwinConfigurationsPath
+          else
+            { };
+
+          withInputsConfigs = if builtins.pathExists withInputsDarwinConfigurationsPath then
+            importer.importDarwinConfigurationsWithInputs withInputsDarwinConfigurationsPath
+          else
+            { };
+
+          allConfigs = checkConflicts "configurations/darwin" regularConfigs withInputsConfigs;
+        in lib.mkMerge [ acc { darwinConfigurations = allConfigs; } ];
 
       addHomeManagerModules = acc:
         let
           homeManagerModulesPath = "${path}/modules/home-manager";
-          homeManagerModules =
-            if builtins.pathExists homeManagerModulesPath then
-              importer.importHomeManagerModules homeManagerModulesPath
-            else
-              { };
+          withInputsHomeManagerModulesPath = "${path}/with-inputs/modules/home-manager";
+
+          regularModules = if builtins.pathExists homeManagerModulesPath then
+            importer.importHomeManagerModules homeManagerModulesPath
+          else
+            { };
+
+          withInputsModules = if builtins.pathExists withInputsHomeManagerModulesPath then
+            importer.importDirWithInputs withInputsHomeManagerModulesPath
+          else
+            { };
+
+          homeManagerModules = checkConflicts "modules/home-manager" regularModules withInputsModules;
         in lib.mkMerge [ acc { inherit homeManagerModules; } ];
 
       addDevenvModules = acc:
         let
           devenvModulesPath = "${path}/modules/devenv";
-          devenvModules = if builtins.pathExists devenvModulesPath then
+          withInputsDevenvModulesPath = "${path}/with-inputs/modules/devenv";
+
+          regularModules = if builtins.pathExists devenvModulesPath then
             importer.importDevenvModules devenvModulesPath
           else
             { };
+
+          withInputsModules = if builtins.pathExists withInputsDevenvModulesPath then
+            importer.importDirWithInputs withInputsDevenvModulesPath
+          else
+            { };
+
+          devenvModules = checkConflicts "modules/devenv" regularModules withInputsModules;
         in lib.mkMerge [ acc { inherit devenvModules; } ];
 
       addFlakeOverlay = acc:
@@ -169,10 +241,20 @@ in {
         addPackages = acc:
           let
             packagesPath = "${path}/packages";
-            resultPackages = if builtins.pathExists packagesPath then
+            withInputsPackagesPath = "${path}/with-inputs/packages";
+
+            regularPackages = if builtins.pathExists packagesPath then
               importer.importPackages packagesPath
             else
               { };
+
+            withInputsPackages = if builtins.pathExists withInputsPackagesPath then
+              lib.mapAttrs (_name: pkg: pkgs.callPackage pkg { })
+                (importer.importDirWithInputs withInputsPackagesPath)
+            else
+              { };
+
+            resultPackages = checkConflicts "packages" regularPackages withInputsPackages;
             shellPkgs =
               # shellPkgs are all the devShells derivations, these allow us to
               # cache shells the same way we do packages.

@@ -103,8 +103,15 @@ let
   importNixOSModules = importDir;
 
   # importNixOSConfigurations traverses each file in the given path looking for a NixOS
-  # configuration.
+  # configuration. Regular (portable) version - files return { system, modules, ... }
   importNixOSConfigurations = path: lib.mapAttrs (_name: attrs:
+    inputs.nixpkgs.lib.nixosSystem
+    (attrs // { specialArgs = { inherit inputs; }; }))
+    (importDir path);
+
+  # importNixOSConfigurationsWithInputs for with-inputs/ directory.
+  # Files have signature: inputs: { system, modules, ... }
+  importNixOSConfigurationsWithInputs = path: lib.mapAttrs (_name: attrs:
     inputs.nixpkgs.lib.nixosSystem
     (attrs // { specialArgs = { inherit inputs; }; }))
     (importDirWithInputs path);
@@ -113,9 +120,31 @@ let
   # configuration.
   importDarwinModules = importDir;
 
-  # importNixDarwinConfigurations traverses each file in the given path looking for a
-  # nix-darwin configuration.
+  # importDarwinConfigurations traverses each file in the given path looking for a
+  # nix-darwin configuration. Regular (portable) version - files return { system, modules, ... }
   importDarwinConfigurations = path:
+    lib.mapAttrs (name: attrs:
+      if !(inputs ? nix-darwin) then
+        throw ''
+          nixDir detected a configurations/darwin/${name} entry, but nix-darwin is not in the flake inputs.
+
+          Please include nix-darwin to your flake inputs:
+
+          {
+            inputs = {
+                   # ...
+                   nix-darwin.url = "github:LnL7/nix-darwin";
+            };
+          }
+        ''
+      else
+        inputs.nix-darwin.lib.darwinSystem
+        (attrs // { specialArgs = { inherit inputs; }; }))
+    (importDir path);
+
+  # importDarwinConfigurationsWithInputs for with-inputs/ directory.
+  # Files have signature: inputs: { system, modules, ... }
+  importDarwinConfigurationsWithInputs = path:
     lib.mapAttrs (name: attrs:
       if !(inputs ? nix-darwin) then
         throw ''
@@ -144,7 +173,8 @@ let
   importDevenvModules = importDir;
 in {
   inherit importPackages importDevenvs importNixOSModules
-    importNixOSConfigurations importDarwinModules importDarwinConfigurations
+    importNixOSConfigurations importNixOSConfigurationsWithInputs
+    importDarwinModules importDarwinConfigurations importDarwinConfigurationsWithInputs
     importHomeManagerModules importDevenvModules importDirWithoutInputs
     importDir importDirWithInputs;
 }
