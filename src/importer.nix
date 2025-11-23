@@ -171,10 +171,23 @@ let
   # importDevenvModules traverses each file in the given path looking for a
   # devenv configuration.
   importDevenvModules = importDir;
+
+  # importDevShells traverses each file in the given path looking for a devShell
+  # configuration. Files have signature: inputs: pkgs: mkShell { ... }
+  importDevShells = path:
+    builtins.foldl' (acc: entryName:
+      let
+        # the key sometimes may be a directory name, other times it may be a
+        # .nix file name. Remove the .nix suffix to standarize.
+        key = lib.removeSuffix ".nix" entryName;
+        # Import the file and call it with inputs and pkgs
+        shell = importFile "${path}/${entryName}" inputs pkgs;
+      in acc // { "${key}" = shell; }) { }
+    (nixSubDirNames path ++ nixFiles path);
 in {
   inherit importPackages importDevenvs importNixOSModules
     importNixOSConfigurations importNixOSConfigurationsWithInputs
     importDarwinModules importDarwinConfigurations importDarwinConfigurationsWithInputs
-    importHomeManagerModules importDevenvModules importDirWithoutInputs
-    importDir importDirWithInputs;
+    importHomeManagerModules importDevenvModules importDevShells
+    importDirWithoutInputs importDir importDirWithInputs;
 }
