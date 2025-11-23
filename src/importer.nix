@@ -40,7 +40,6 @@ let
       in if builtins.length files == 1 then acc ++ [ subdir ] else acc) [ ]
     (subDirNames path);
 
-
   dirCallPackage = path:
     builtins.foldl' (acc: entryName:
       let
@@ -50,9 +49,20 @@ let
       in acc // { "${key}" = pkgs.callPackage "${path}/${entryName}" { }; }) { }
     (nixSubDirNames path ++ nixFiles path);
 
+  dirCallPackageWithInputs = path:
+    builtins.foldl' (acc: entryName:
+      let
+        # the key sometimes may be a directory name, other times it may be a
+        # .nix file name. Remove the .nix suffix to standarize.
+        key = lib.removeSuffix ".nix" entryName;
+      in acc // { "${key}" = pkgs.callPackage (import "${path}/${entryName}" inputs) { }; }) { }
+    (nixSubDirNames path ++ nixFiles path);
+
   # importPackages traverses each file/subdirectory in the given path looking for a
   # package configuration.
   importPackages = dirCallPackage;
+
+  importPackagesWithInputs = dirCallPackageWithInputs;
 
   # importDirWithoutInputs imports files from a directory without passing inputs.
   # The imported files should be plain attribute sets or functions expecting module args.
@@ -106,27 +116,33 @@ let
   # configuration.
   importNixOSModules = importDir;
 
-  # importNixOSConfigurations traverses each file in the given path looking for a NixOS
-  # configuration. Regular (portable) version - files return { system, modules, ... }
-  importNixOSConfigurations = path: lib.mapAttrs (_name: attrs:
+  # importNixOSModulesWithInputs for with-inputs/ directory.
+  importNixOSModulesWithInputs = importDirWithInputs;
+
+  _importNixOSConfigurations = innerImporter: path: lib.mapAttrs (_name: attrs:
     inputs.nixpkgs.lib.nixosSystem
     (attrs // { specialArgs = { inherit inputs; }; }))
-    (importDir path);
+    (innerImporter path);
+
+  # importNixOSConfigurations traverses each file in the given path looking for a NixOS
+  # configuration. Regular (portable) version - files return { system, modules, ... }
+  importNixOSConfigurations =
+    _importNixOSConfigurations importDir;
 
   # importNixOSConfigurationsWithInputs for with-inputs/ directory.
   # Files have signature: inputs: { system, modules, ... }
-  importNixOSConfigurationsWithInputs = path: lib.mapAttrs (_name: attrs:
-    inputs.nixpkgs.lib.nixosSystem
-    (attrs // { specialArgs = { inherit inputs; }; }))
-    (importDirWithInputs path);
+  importNixOSConfigurationsWithInputs =
+    _importNixOSConfigurations importDirWithInputs;
 
   # importDarwinModules traverses each file in the given path looking for a nix-darwin
   # configuration.
   importDarwinModules = importDir;
 
-  # importDarwinConfigurations traverses each file in the given path looking for a
-  # nix-darwin configuration. Regular (portable) version - files return { system, modules, ... }
-  importDarwinConfigurations = path:
+  # importDarwinModulesWithInputs for with-inputs/ directory.
+  # Files have signature: inputs: { system, modules, ... }
+  importDarwinModulesWithInputs = importDirWithInputs;
+
+  _importDarwinConfigurations = innerImporter: path:
     lib.mapAttrs (name: attrs:
       if !(inputs ? nix-darwin) then
         throw ''
@@ -144,33 +160,25 @@ let
       else
         inputs.nix-darwin.lib.darwinSystem
         (attrs // { specialArgs = { inherit inputs; }; }))
-    (importDir path);
+    (innerImporter path);
+
+  # importDarwinConfigurations traverses each file in the given path looking for a
+  # nix-darwin configuration. Regular (portable) version - files return { system, modules, ... }
+  importDarwinConfigurations =
+    _importDarwinConfigurations importDir;
 
   # importDarwinConfigurationsWithInputs for with-inputs/ directory.
   # Files have signature: inputs: { system, modules, ... }
-  importDarwinConfigurationsWithInputs = path:
-    lib.mapAttrs (name: attrs:
-      if !(inputs ? nix-darwin) then
-        throw ''
-          nixDir detected a configurations/darwin/${name} entry, but nix-darwin is not in the flake inputs.
-
-          Please include nix-darwin to your flake inputs:
-
-          {
-            inputs = {
-                   # ...
-                   nix-darwin.url = "github:LnL7/nix-darwin";
-            };
-          }
-        ''
-      else
-        inputs.nix-darwin.lib.darwinSystem
-        (attrs // { specialArgs = { inherit inputs; }; }))
-    (importDirWithInputs path);
+  importDarwinConfigurationsWithInputs =
+    _importDarwinConfigurations importDirWithInputs;
 
   # importHomeManagerModules traverses each file in the given path looking for a
   # home-manager configuration.
   importHomeManagerModules = importDir;
+
+  # importHomeManagerModulesWithInputs for with-inputs/ directory.
+  # Files have signature: inputs: { system, modules, ... }
+  importHomeManagerModulesWithInputs = importDirWithInputs;
 
   # importDevenvModules traverses each file in the given path looking for a
   # devenv configuration.
@@ -202,9 +210,14 @@ let
       in acc // { "${key}" = shell; }) { }
     (nixSubDirNames path ++ nixFiles path);
 in {
-  inherit importPackages importDevenvs importDevenvsWithInputs importNixOSModules
+  inherit importPackages
+    importNixOSModules importNixOSModulesWithInputs
+    importDevenvs importDevenvsWithInputs 
     importNixOSConfigurations importNixOSConfigurationsWithInputs
-    importDarwinModules importDarwinConfigurations importDarwinConfigurationsWithInputs
-    importHomeManagerModules importDevenvModules importDevShells importDevShellsWithInputs
+    importDarwinModules importDarwinModulesWithInputs
+    importDarwinConfigurations importDarwinConfigurationsWithInputs
+    importHomeManagerModules importHomeManagerModulesWithInputs
+    importDevenvModules
+    importDevShells importDevShellsWithInputs
     importDirWithoutInputs importDir importDirWithInputs;
 }

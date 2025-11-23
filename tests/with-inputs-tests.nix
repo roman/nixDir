@@ -11,7 +11,6 @@ let
 in
 {
   tests = [
-    # Test 1: Modules in with-inputs are imported as functions
     {
       name = "with-inputs module is imported as function";
       type = "unit";
@@ -26,7 +25,6 @@ in
         builtins.isFunction module;
     }
 
-    # Test 2: With-inputs module can be evaluated
     {
       name = "with-inputs module can be evaluated";
       type = "unit";
@@ -42,7 +40,6 @@ in
         evaluated._meta.hasInputs == true && evaluated._meta.inputCount > 0;
     }
 
-    # Test 3: Packages in with-inputs work correctly
     {
       name = "with-inputs package can be built";
       type = "unit";
@@ -58,7 +55,6 @@ in
         lib.isDerivation package;
     }
 
-    # Test 4: Package with inputs can access input attributes
     {
       name = "package with inputs receives inputs correctly";
       type = "unit";
@@ -75,7 +71,6 @@ in
         lib.hasInfix "Input count:" content && lib.hasInfix "inputs support" content;
     }
 
-    # Test 5: Conflict detection - both exist independently
     {
       name = "regular and with-inputs modules can both exist";
       type = "unit";
@@ -93,7 +88,6 @@ in
         (regularModules ? conflicting) && (withInputsModules ? conflicting);
     }
 
-    # Test 6: Regular and with-inputs can coexist when no conflicts
     {
       name = "regular and with-inputs coexist without name conflicts";
       type = "unit";
@@ -111,7 +105,6 @@ in
         merged ? test-module;
     }
 
-    # Test 7: importDirWithInputs applies inputs to files
     {
       name = "importDirWithInputs passes inputs to imported files";
       type = "unit";
@@ -133,7 +126,6 @@ in
         isFunction && builtins.isAttrs evaluated;
     }
 
-    # Test 8: Portable configurations can be imported
     {
       name = "portable configuration can be imported";
       type = "unit";
@@ -144,7 +136,7 @@ in
           configs = importer.importNixOSConfigurations configPath;
         in
         # Verify we got a configuration
-        configs ? test-host && configs.test-host ? config;
+        (lib.traceValFn builtins.attrNames configs) ? test-host && configs.test-host ? config;
     }
   ];
 }

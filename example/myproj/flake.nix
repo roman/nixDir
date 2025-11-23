@@ -7,6 +7,7 @@
     nixpkgs.follows = "nixDir/nixpkgs";
     flake-parts.follows = "nixDir/flake-parts";
     nix-darwin.url = "github:LnL7/nix-darwin";
+    mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
 
     devenv.follows = "nixDir/devenv";
     nix2container.follows = "nixDir/nix2container";

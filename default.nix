@@ -4,28 +4,11 @@ let
   cfg = config.nixDir;
   path = "${cfg.root}/${cfg.dirName}";
 
-  # checkConflicts validates that there are no overlapping keys between
-  # regular and with-inputs directories. Having the same name in both
-  # locations is likely a mistake by the flake author.
-  checkConflicts = outputType: regular: withInputs:
-    let
-      conflicts = builtins.filter (name: regular ? ${name}) (builtins.attrNames withInputs);
-      hasConflicts = builtins.length conflicts > 0;
-    in
-      if hasConflicts then
-        throw ''
-          nixDir found conflicting ${outputType} entries in both regular and with-inputs directories:
-          ${lib.concatStringsSep ", " conflicts}
-
-          Each entry should exist in either the regular directory OR the with-inputs directory, not both.
-
-          Regular: ${cfg.dirName}/${outputType}/
-          With-inputs: ${cfg.dirName}/with-inputs/${outputType}/
-
-          Please move or rename the conflicting entries.
-        ''
-      else
-        regular // withInputs;
+  flakeLib = import ./lib.nix {
+    inherit lib;
+    inherit (cfg) dirName;
+  };
+  inherit (flakeLib) checkConflicts;
 in {
   options = {
     nixDir = {
@@ -152,7 +135,7 @@ in {
             { };
 
           withInputsModules = if builtins.pathExists withInputsDarwinModulesPath then
-            importer.importDirWithInputs withInputsDarwinModulesPath
+            importer.importDarwinModulesWithInputs withInputsDarwinModulesPath
           else
             { };
 
@@ -188,11 +171,12 @@ in {
             { };
 
           withInputsModules = if builtins.pathExists withInputsHomeManagerModulesPath then
-            importer.importDirWithInputs withInputsHomeManagerModulesPath
+            importer.importHomeManagerModulesWithInputs withInputsHomeManagerModulesPath
           else
             { };
 
           homeManagerModules = checkConflicts "modules/home-manager" regularModules withInputsModules;
+
         in lib.mkMerge [ acc { inherit homeManagerModules; } ];
 
       addDevenvModules = acc:
@@ -206,7 +190,7 @@ in {
             { };
 
           withInputsModules = if builtins.pathExists withInputsDevenvModulesPath then
-            importer.importDirWithInputs withInputsDevenvModulesPath
+            importer.importDevenvModulesWithInputs withInputsDevenvModulesPath
           else
             { };
 
@@ -249,12 +233,12 @@ in {
               { };
 
             withInputsPackages = if builtins.pathExists withInputsPackagesPath then
-              lib.mapAttrs (_name: pkg: pkgs.callPackage pkg { })
-                (importer.importDirWithInputs withInputsPackagesPath)
+              importer.importPackagesWithInputs packagesPath
             else
               { };
 
             resultPackages = checkConflicts "packages" regularPackages withInputsPackages;
+
             shellPkgs =
               # shellPkgs are all the devShells derivations, these allow us to
               # cache shells the same way we do packages.
@@ -322,6 +306,7 @@ in {
             # Cross-conflict check: devShells vs devenvs
             crossConflicts = builtins.filter (name: allDevenvs ? ${name})
               (builtins.attrNames allDevShells);
+
             hasCrossConflicts = builtins.length crossConflicts > 0;
 
             result = if hasCrossConflicts then
