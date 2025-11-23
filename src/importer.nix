@@ -78,9 +78,7 @@ let
       in acc // { "${key}" = importFile "${path}/${entryName}" inputs; }) { }
     (nixSubDirNames path ++ nixFiles path);
 
-  # importDevenvs traverses each file in the given path looking for a devenv
-  # configuration.
-  importDevenvs = path:
+  _importDevenvs = innerImporter: path:
     lib.mapAttrs (name: attrs:
       if !(inputs ? devenv) then
         throw ''
@@ -96,7 +94,13 @@ let
           }
         ''
       else
-        attrs) (importDir path);
+        attrs) (innerImporter path);
+
+  # importDevenvs traverses each file in the given path looking for a devenv configuration.
+  importDevenvs = _importDevenvs importDir;
+
+  # importDevenvsWithInputs for with-inputs/ directory.
+  importDevenvsWithInputs = _importDevenvs importDirWithInputs;
 
   # importNixOSModules traverses each file in the given path looking for a NixOS
   # configuration.
@@ -173,8 +177,21 @@ let
   importDevenvModules = importDir;
 
   # importDevShells traverses each file in the given path looking for a devShell
-  # configuration. Files have signature: inputs: pkgs: mkShell { ... }
+  # configuration. Files have signature: pkgs: mkShell { ... }
   importDevShells = path:
+    builtins.foldl' (acc: entryName:
+      let
+        # the key sometimes may be a directory name, other times it may be a
+        # .nix file name. Remove the .nix suffix to standarize.
+        key = lib.removeSuffix ".nix" entryName;
+        # Import the file and call it with pkgs only (portable)
+        shell = importFile "${path}/${entryName}" pkgs;
+      in acc // { "${key}" = shell; }) { }
+    (nixSubDirNames path ++ nixFiles path);
+
+  # importDevShellsWithInputs traverses each file in the given path looking for a devShell
+  # configuration. Files have signature: inputs: pkgs: mkShell { ... }
+  importDevShellsWithInputs = path:
     builtins.foldl' (acc: entryName:
       let
         # the key sometimes may be a directory name, other times it may be a
@@ -185,9 +202,9 @@ let
       in acc // { "${key}" = shell; }) { }
     (nixSubDirNames path ++ nixFiles path);
 in {
-  inherit importPackages importDevenvs importNixOSModules
+  inherit importPackages importDevenvs importDevenvsWithInputs importNixOSModules
     importNixOSConfigurations importNixOSConfigurationsWithInputs
     importDarwinModules importDarwinConfigurations importDarwinConfigurationsWithInputs
-    importHomeManagerModules importDevenvModules importDevShells
+    importHomeManagerModules importDevenvModules importDevShells importDevShellsWithInputs
     importDirWithoutInputs importDir importDirWithInputs;
 }
