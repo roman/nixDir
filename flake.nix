@@ -55,6 +55,11 @@
           "with-inputs" = import ./tests/with-inputs-tests.nix {
             inherit pkgs lib inputs;
           };
+
+          # Tests for devShells and devenvs import and conflict detection.
+          "devshells" = import ./tests/devshells-tests.nix {
+            inherit pkgs lib inputs;
+          };
         };
       };
     };
