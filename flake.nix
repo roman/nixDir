@@ -45,6 +45,9 @@
           "smart-importDir" = import ./tests/smart-importDir-tests.nix {
             inherit pkgs lib inputs;
           };
+          "module-config" = import ./tests/module-config-tests.nix {
+            inherit pkgs lib inputs;
+          };
         };
       };
     };
