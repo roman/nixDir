@@ -283,14 +283,65 @@ in {
             ];
           in lib.mkMerge [ acc nixDirPackages ];
 
-        addDevenvs = acc:
+        addDevShellsAndDevenvs = acc:
           let
-            devenvsPath = "${path}/devenvs";
-            devenvEntries = if builtins.pathExists devenvsPath then {
-              devenv.shells = importer.importDevenvs devenvsPath;
-            } else
+            # Import devShells from all locations
+            devShellsPath = "${path}/devshells";
+            withInputsDevShellsPath = "${path}/with-inputs/devshells";
+
+            regularDevShells = if builtins.pathExists devShellsPath then
+              importer.importDevShells devShellsPath
+            else
               { };
-          in lib.mkMerge [ acc devenvEntries ];
+
+            withInputsDevShells = if builtins.pathExists withInputsDevShellsPath then
+              importer.importDevShells withInputsDevShellsPath
+            else
+              { };
+
+            # Conflict check between regular and with-inputs devShells
+            allDevShells = checkConflicts "devshells" regularDevShells withInputsDevShells;
+
+            # Import devenvs from all locations
+            devenvsPath = "${path}/devenvs";
+            withInputsDevenvsPath = "${path}/with-inputs/devenvs";
+
+            regularDevenvs = if builtins.pathExists devenvsPath then
+              importer.importDevenvs devenvsPath
+            else
+              { };
+
+            withInputsDevenvs = if builtins.pathExists withInputsDevenvsPath then
+              importer.importDevenvs withInputsDevenvsPath
+            else
+              { };
+
+            # Conflict check between regular and with-inputs devenvs
+            allDevenvs = checkConflicts "devenvs" regularDevenvs withInputsDevenvs;
+
+            # Cross-conflict check: devShells vs devenvs
+            crossConflicts = builtins.filter (name: allDevenvs ? ${name})
+              (builtins.attrNames allDevShells);
+            hasCrossConflicts = builtins.length crossConflicts > 0;
+
+            result = if hasCrossConflicts then
+              throw ''
+                nixDir found conflicting entries between devShells and devenvs:
+                ${lib.concatStringsSep ", " crossConflicts}
+
+                DevEnv creates devShells internally, so each name must be unique across both.
+
+                DevShells: ${cfg.dirName}/devshells/ or ${cfg.dirName}/with-inputs/devshells/
+                DevEnvs: ${cfg.dirName}/devenvs/ or ${cfg.dirName}/with-inputs/devenvs/
+
+                Please rename or remove the conflicting entries.
+              ''
+            else
+              {
+                devShells = allDevShells;
+                devenv.shells = allDevenvs;
+              };
+          in lib.mkMerge [ acc result ];
 
         addDevenvModules = acc:
           let
@@ -328,7 +379,7 @@ in {
 
       in builtins.foldl' (acc: f: f acc) { } ([ addPackages ]
         ++ lib.optionals (inputs ? nixpkgs) [ installOverlays ]
-        ++ lib.optionals (inputs ? devenv) [ addDevenvs addDevenvModules ]);
+        ++ lib.optionals (inputs ? devenv) [ addDevShellsAndDevenvs addDevenvModules ]);
   };
 }
 
