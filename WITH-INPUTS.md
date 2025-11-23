@@ -151,13 +151,13 @@ inputs: {
 
 ### DevShells
 
-DevShells provide simple development environments using `pkgs.mkShell`. All devShells (both regular and with-inputs) receive `inputs` and `pkgs` arguments.
+DevShells provide simple development environments using `pkgs.mkShell`.
 
-#### DevShell (Standard Pattern)
+#### DevShell (Portable Pattern)
 
 ```nix
 # nix/devshells/default.nix
-inputs: pkgs:
+pkgs:
 
 pkgs.mkShell {
   buildInputs = [ pkgs.hello pkgs.cowsay ];
@@ -186,9 +186,9 @@ pkgs.mkShell {
 
 ### DevEnvs
 
-DevEnvs use the devenv framework for richer development environments. DevEnvs in both regular and with-inputs directories use the same signature.
+DevEnvs use the devenv framework for richer development environments.
 
-#### DevEnv (Standard Pattern)
+#### DevEnv (Portable Pattern)
 
 ```nix
 # nix/devenvs/default.nix
@@ -204,20 +204,21 @@ DevEnvs use the devenv framework for richer development environments. DevEnvs in
 }
 ```
 
-#### DevEnv (With Inputs - Same Directory)
+#### DevEnv (With Inputs)
 
 ```nix
 # nix/with-inputs/devenvs/my-env.nix
-{ pkgs, ... }:
+inputs: { pkgs, ... }:
 
 {
-  packages = [ pkgs.git ];
+  packages = [
+    pkgs.git
+    inputs.some-flake.packages.${pkgs.system}.custom-devtool
+  ];
 
   languages.rust.enable = true;
 }
 ```
-
-**Note:** DevEnvs in `with-inputs/devenvs/` use the same signature as regular devenvs (`{ pkgs, ... }: {...}`). The `with-inputs` directory simply provides organizational separation for devenvs that are specific to this flake's context, without actually passing `inputs` to the files.
 
 **Important:** DevShell and DevEnv names must be unique across both types since devenv creates devShells internally. You cannot have a devShell named "default" and a devenv named "default" - nixDir will detect this conflict and throw an error.
 
@@ -280,15 +281,13 @@ nix/
 
 ### File Signatures
 
-| Type | Regular | With-Inputs |
+| Type | Regular (Portable) | With-Inputs (Non-Portable) |
 |------|---------|-------------|
 | NixOS Module | `{ pkgs, config, ... }: {...}` | `inputs: { pkgs, config, ... }: {...}` |
 | Package | `{ dep1, dep2, ... }: derivation` | `inputs: { dep1, dep2, ... }: derivation` |
 | Configuration | `{ system, modules, ... }` | `inputs: { system, modules, ... }` |
-| DevShell | `inputs: pkgs: mkShell {...}` | `inputs: pkgs: mkShell {...}` |
-| DevEnv | `{ pkgs, ... }: {...}` | `{ pkgs, ... }: {...}` |
-
-**Note:** DevShells always receive both `inputs` and `pkgs` (in both regular and with-inputs directories). DevEnvs use the standard devenv module signature in both locations.
+| DevShell | `pkgs: mkShell {...}` | `inputs: pkgs: mkShell {...}` |
+| DevEnv | `{ pkgs, ... }: {...}` | `inputs: { pkgs, ... }: {...}` |
 
 
 ## FAQ
@@ -325,11 +324,10 @@ A: No! Since devenv creates devShells internally, names must be unique across bo
 and devenvs. nixDir will detect this conflict and throw an error.
 
 **Q: Do devShells in regular vs with-inputs directories have different signatures?**
-A: No, devShells always use the same signature `inputs: pkgs: mkShell {...}` in both locations.
-The `with-inputs/` directory is just for organization when you want to use flake inputs in your
-shell.
+A: Yes! Regular devShells use `pkgs: mkShell {...}` (portable), while with-inputs devShells use
+`inputs: pkgs: mkShell {...}` (non-portable). This follows the same pattern as other file types.
 
-**Q: Why don't devenvs in with-inputs receive inputs?**
-A: DevEnvs use the standard devenv module signature `{ pkgs, ... }: {...}` regardless of
-location. The `with-inputs/devenvs/` directory is for organizational purposes to separate
-project-specific devenvs from portable ones.
+**Q: Do devenvs in with-inputs receive inputs?**
+A: Yes! Regular devenvs use `{ pkgs, ... }: {...}` while with-inputs devenvs use
+`inputs: { pkgs, ... }: {...}`. This allows you to access flake inputs in your devenv
+configuration.
