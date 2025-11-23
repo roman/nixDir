@@ -1,7 +1,23 @@
 { pkgs, lib, inputs }:
 let
-  # Read the default.nix flake module to test its structure
+  # Flake module with self argument applied
   flakeModule = import ../default.nix;
+
+  # Mock module arguments to call the flake module
+  mockModuleArgs = {
+    inherit lib inputs;
+    system = pkgs.system;
+    config = {
+      nixDir = {
+        enable = false;
+        root = ./.;
+        dirName = "nix";
+      };
+    };
+  };
+
+  # Evaluated module result
+  moduleResult = flakeModule null mockModuleArgs;
 in
 {
   tests = [
@@ -16,122 +32,77 @@ in
       name = "flake module returns attrset";
       type = "unit";
       expected = true;
-      actual =
-        let
-          # Call with self argument
-          result = flakeModule null;
-        in
-        builtins.isAttrs result;
+      actual = builtins.isAttrs moduleResult;
     }
 
     {
       name = "flake module has options";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result ? options;
+      actual = moduleResult ? options;
     }
 
     {
       name = "flake module has config";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result ? config;
+      actual = moduleResult ? config;
     }
 
     {
       name = "nixDir.enable option exists";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result.options ? nixDir && result.options.nixDir ? enable;
+      actual = moduleResult.options ? nixDir && moduleResult.options.nixDir ? enable;
     }
 
     {
       name = "nixDir.root option exists";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result.options ? nixDir && result.options.nixDir ? root;
+      actual = moduleResult.options ? nixDir && moduleResult.options.nixDir ? root;
     }
 
     {
       name = "nixDir.dirName option exists";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result.options ? nixDir && result.options.nixDir ? dirName;
+      actual = moduleResult.options ? nixDir && moduleResult.options.nixDir ? dirName;
     }
 
     {
       name = "nixDir.generateAllPackage option exists";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result.options ? nixDir && result.options.nixDir ? generateAllPackage;
+      actual = moduleResult.options ? nixDir && moduleResult.options.nixDir ? generateAllPackage;
     }
 
     {
       name = "nixDir.installFlakeOverlay option exists";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result.options ? nixDir && result.options.nixDir ? installFlakeOverlay;
+      actual = moduleResult.options ? nixDir && moduleResult.options.nixDir ? installFlakeOverlay;
     }
 
     {
       name = "nixDir.generateFlakeOverlay option exists";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result.options ? nixDir && result.options.nixDir ? generateFlakeOverlay;
+      actual = moduleResult.options ? nixDir && moduleResult.options.nixDir ? generateFlakeOverlay;
     }
 
     {
       name = "nixDir.nixpkgsConfig option exists";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result.options ? nixDir && result.options.nixDir ? nixpkgsConfig;
+      actual = moduleResult.options ? nixDir && moduleResult.options.nixDir ? nixpkgsConfig;
     }
 
     {
       name = "nixDir.installOverlays option exists";
       type = "unit";
       expected = true;
-      actual =
-        let
-          result = flakeModule null;
-        in
-        result.options ? nixDir && result.options.nixDir ? installOverlays;
+      actual = moduleResult.options ? nixDir && moduleResult.options.nixDir ? installOverlays;
     }
   ];
 }

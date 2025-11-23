@@ -11,8 +11,8 @@ let
     inputs = builtins.removeAttrs inputs [ "nix-darwin" ];
   };
 
-  # Create a dummy path for testing
-  dummyPath = /tmp/nonexistent;
+  # Path argument for testing missing input errors (error occurs before path is used)
+  dummyPath = ./fixtures/conflicts;
 in
 {
   tests = [
