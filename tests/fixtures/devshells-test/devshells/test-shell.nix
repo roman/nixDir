@@ -1,4 +1,4 @@
-inputs: pkgs:
+pkgs:
 
 pkgs.mkShell {
   buildInputs = [ pkgs.hello ];

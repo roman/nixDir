@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+inputs: { pkgs, ... }:
 
 {
   packages = [ pkgs.figlet ];

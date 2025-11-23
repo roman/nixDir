@@ -295,7 +295,7 @@ in {
               { };
 
             withInputsDevShells = if builtins.pathExists withInputsDevShellsPath then
-              importer.importDevShells withInputsDevShellsPath
+              importer.importDevShellsWithInputs withInputsDevShellsPath
             else
               { };
 
@@ -312,7 +312,7 @@ in {
               { };
 
             withInputsDevenvs = if builtins.pathExists withInputsDevenvsPath then
-              importer.importDevenvs withInputsDevenvsPath
+              importer.importDevenvsWithInputs withInputsDevenvsPath
             else
               { };
 

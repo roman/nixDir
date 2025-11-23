@@ -22,14 +22,14 @@ in
         shells ? test-shell && lib.isDerivation shells.test-shell;
     }
 
-    # Test 2: importDevShells imports from with-inputs devshells directory
+    # Test 2: importDevShellsWithInputs imports from with-inputs devshells directory
     {
-      name = "importDevShells imports with-inputs devShells";
+      name = "importDevShellsWithInputs imports with-inputs devShells";
       type = "unit";
       expected = true;
       actual =
         let
-          shells = importer.importDevShells "${devShellsPath}/with-inputs/devshells";
+          shells = importer.importDevShellsWithInputs "${devShellsPath}/with-inputs/devshells";
         in
         shells ? with-inputs-shell && lib.isDerivation shells.with-inputs-shell;
     }
@@ -62,12 +62,12 @@ in
 
     # Test 5: devenvs can be imported from with-inputs directory
     {
-      name = "importDevenvs imports with-inputs devenvs";
+      name = "importDevenvsWithInputs imports with-inputs devenvs";
       type = "unit";
       expected = true;
       actual =
         let
-          envs = importer.importDevenvs "${devShellsPath}/with-inputs/devenvs";
+          envs = importer.importDevenvsWithInputs "${devShellsPath}/with-inputs/devenvs";
         in
         envs ? with-inputs-env && builtins.isFunction envs.with-inputs-env;
     }
