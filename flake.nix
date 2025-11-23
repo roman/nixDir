@@ -48,6 +48,9 @@
           "module-config" = import ./tests/module-config-tests.nix {
             inherit pkgs lib inputs;
           };
+          "integration" = import ./tests/integration-tests.nix {
+            inherit pkgs lib inputs;
+          };
         };
       };
     };
