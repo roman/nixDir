@@ -41,18 +41,6 @@
             inherit pkgs lib inputs;
           };
 
-          # Tests for scopeInputsToSystem function that extracts system-specific values
-          # from flake inputs (e.g., inputs.foo.packages.${system} -> inputs.foo.packages).
-          "scope-inputs" = import ./tests/scopeInputs-tests.nix {
-            inherit pkgs lib inputs;
-          };
-
-          # Tests for smart importDir that auto-detects module signatures using tryEval
-          # and handles both `inputs: { pkgs, ... }:` and `{ pkgs, ... }:` signatures.
-          "smart-importDir" = import ./tests/smart-importDir-tests.nix {
-            inherit pkgs lib inputs;
-          };
-
           # Tests for nixDir flake module configuration options and structure.
           "module-config" = import ./tests/module-config-tests.nix {
             inherit pkgs lib inputs;
@@ -60,11 +48,6 @@
 
           # Integration tests using the example project to verify end-to-end functionality.
           "integration" = import ./tests/integration-tests.nix {
-            inherit pkgs lib inputs;
-          };
-
-          # Tests for error handling when required inputs (devenv, nix-darwin) are missing.
-          "error-handling" = import ./tests/error-handling-tests.nix {
             inherit pkgs lib inputs;
           };
         };

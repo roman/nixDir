@@ -40,16 +40,6 @@ let
       in if builtins.length files == 1 then acc ++ [ subdir ] else acc) [ ]
     (subDirNames path);
 
-  # scopeInputsToSystem scopes flake inputs to a specific system.
-  # For any attribute in an input that has a ${system} key, it extracts that value.
-  # This transforms inputs.foo.packages.${system}.bar -> inputs.foo.packages.bar
-  scopeInputsToSystem = system: inputs:
-    lib.mapAttrs (name: input:
-      lib.mapAttrs (outputName: outputValue:
-        if builtins.isAttrs outputValue && outputValue ? ${system} then
-          outputValue.${system}
-        else
-          outputValue) input) inputs;
 
   dirCallPackage = path:
     builtins.foldl' (acc: entryName:
@@ -75,24 +65,9 @@ let
       in acc // { "${key}" = importFile "${path}/${entryName}"; }) { }
     (nixSubDirNames path ++ nixFiles path);
 
-  # importDir is a smart importer that automatically detects if imported files
-  # expect inputs or not. It scopes inputs to the current system for cleaner module code.
-  # - Files with signature `inputs: { pkgs, ... }: ...` get scoped inputs
-  # - Files with signature `{ pkgs, ... }: ...` work as-is
-  importDir = path:
-    let scopedInputs = scopeInputsToSystem pkgs.system inputs;
-    in builtins.foldl' (acc: entryName:
-      let
-        key = lib.removeSuffix ".nix" entryName;
-        imported = importFile "${path}/${entryName}";
-        # Try to call with scoped inputs first
-        withInputsResult = builtins.tryEval (imported scopedInputs);
-        # If successful, use the result (a function expecting moduleArgs)
-        # If failed, use the original import (already a function expecting moduleArgs)
-        finalValue =
-          if withInputsResult.success then withInputsResult.value else imported;
-      in acc // { "${key}" = finalValue; }) { }
-    (nixSubDirNames path ++ nixFiles path);
+  # importDir imports files that expect standard module arguments.
+  # For modules that need flake inputs, use with-inputs/ directory structure.
+  importDir = importDirWithoutInputs;
 
   importDirWithInputs = path:
     builtins.foldl' (acc: entryName:
@@ -171,5 +146,5 @@ in {
   inherit importPackages importDevenvs importNixOSModules
     importNixOSConfigurations importDarwinModules importDarwinConfigurations
     importHomeManagerModules importDevenvModules importDirWithoutInputs
-    importDir importDirWithInputs scopeInputsToSystem;
+    importDir importDirWithInputs;
 }

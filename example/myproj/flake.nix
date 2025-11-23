@@ -43,14 +43,14 @@
         # defaults to false).
         generateAllPackage = true;
 
-	# (Optional) Generates a default overlay that contains all the packages defined in
+	# (Optional) Generates a flake overlay that contains all the packages defined in
 	# this flake.
-	generateDefaultOverlay = true;
+	generateFlakeOverlay = true;
 
 	# (Optional) Have all the packages defined in this flake available in the
 	# flake-part's perSystem pkgs argument for this flake. This setting sets
-	# generateDefaultOverlay to true automatically.
-	installDefaultOverlay = true;
+	# generateFlakeOverlay to true automatically.
+	installFlakeOverlay = true;
 
 	# (Optional) Have all the packages from the overlays in the given list available in
 	# the perSystem pkgs argument for this flake.
