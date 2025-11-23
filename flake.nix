@@ -42,6 +42,9 @@
           "scope-inputs" = import ./tests/scopeInputs-tests.nix {
             inherit pkgs lib inputs;
           };
+          "smart-importDir" = import ./tests/smart-importDir-tests.nix {
+            inherit pkgs lib inputs;
+          };
         };
       };
     };
