@@ -2,7 +2,7 @@
 
 ## Running Tests
 
-Run all tests:
+Run all unit tests:
 
 ```bash
 nix run .#nixtests:run
@@ -11,12 +11,24 @@ nix run .#nixtests:run
 Or use the helper script:
 
 ```bash
+./tests/run-unit-tests.sh
+```
+
+Run integration tests:
+
+```bash
+./tests/run-integration-tests.sh
+```
+
+Run all tests:
+
+```bash
 ./tests/run-tests.sh
 ```
 
 ## Test Framework
 
-nixDir uses [nixtest](https://gitlab.com/technofab/nixtest) for testing.
+nixDir uses [nixtest](https://gitlab.com/technofab/nixtest) for unit testing and bash scripts for integration testing.
 
 ## Test Organization
 

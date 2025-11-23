@@ -39,35 +39,7 @@ in
         result ? test && evaluated.testValue == "from-directory";
     }
 
-    # Test 3: Conflict case should throw error
-    {
-      name = "conflicting file and directory throws error";
-      type = "script";
-      script = ''
-        PATH=${pkgs.nix}/bin:${pkgs.gnugrep}/bin:$PATH
-
-        # Try to import the conflicting path and expect an error
-        if nix-instantiate --eval --strict --expr '
-          let
-            pkgs = import ${inputs.nixpkgs} { system = "${pkgs.system}"; };
-            lib = pkgs.lib;
-            inputs = {};
-            importer = import ${../src/importer.nix} {
-              inherit pkgs lib inputs;
-            };
-          in
-          importer.importDirWithoutInputs ${conflictPath}
-        ' 2>&1 | grep -q "nixDir is confused"; then
-          echo "PASS: Conflict detected as expected"
-          exit 0
-        else
-          echo "FAIL: Expected conflict error not thrown"
-          exit 1
-        fi
-      '';
-    }
-
-    # Test 4: Error message mentions conflicting entries
+    # Test 3: Error message mentions conflicting entries
     {
       name = "conflict error message is helpful";
       type = "unit";

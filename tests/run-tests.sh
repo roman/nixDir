@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Test runner script for nixDir
-# Runs all test suites using nixtest
+# Master test runner for nixDir
+# Runs both unit tests (nixtest) and integration tests (bash)
 
 set -euo pipefail
 
@@ -9,7 +9,44 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
-echo "Running nixDir test suite..."
+EXIT_CODE=0
+
+echo "========================================"
+echo "Running nixDir Test Suite"
+echo "========================================"
 echo ""
 
-nix run .#nixtests:run "$@"
+# Run unit tests
+echo "Step 1/2: Running unit tests..."
+echo ""
+if ! "$PROJECT_ROOT/tests/run-unit-tests.sh" "$@"; then
+  EXIT_CODE=1
+  echo ""
+  echo "⚠ Unit tests failed"
+fi
+
+echo ""
+echo "========================================"
+echo ""
+
+# Run integration tests
+echo "Step 2/2: Running integration tests..."
+echo ""
+if ! "$PROJECT_ROOT/tests/run-integration-tests.sh" "$@"; then
+  EXIT_CODE=1
+  echo ""
+  echo "⚠ Integration tests failed"
+fi
+
+echo ""
+echo "========================================"
+echo "Test Suite Complete"
+echo "========================================"
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "❌ Some tests failed"
+  exit 1
+else
+  echo "✅ All tests passed"
+  exit 0
+fi
