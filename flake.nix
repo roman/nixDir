@@ -7,6 +7,8 @@
     nix2container.url = "github:nlewo/nix2container";
     nix2container.inputs = { nixpkgs.follows = "nixpkgs"; };
 
+    nixtest.url = "gitlab:technofab/nixtest?dir=lib";
+
     systems.url = "github:nix-systems/default";
     systems.flake = false;
   };
@@ -14,18 +16,27 @@
   outputs = { self, flake-parts, ... }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import inputs.systems;
-      imports = [ inputs.devenv.flakeModule ];
+      imports = [ inputs.devenv.flakeModule inputs.nixtest.flakeModule ];
       flake = {
         flakeModule = import ./. self;
         flakeModules.default = import ./. self;
       };
-      perSystem = _: {
+      perSystem = { pkgs, lib, config, ... }: {
         devenv.shells.default = {
+          devenv.root = builtins.toString ./.;
+
+          packages = [ config.treefmt.build.wrapper ];
+
           git-hooks.hooks = {
             deadnix.enable = true;
             nixfmt-classic.enable = true;
             nil.enable = true;
           };
+        };
+
+        # Test suite configuration
+        nixtest.suites = {
+          # Placeholder - will be populated as we create test files
         };
       };
     };
