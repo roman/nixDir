@@ -1,5 +1,10 @@
 # nixDir
 
+> **Note**
+> **This is the v2 version of nixDir.**
+>
+> For information about all available versions, see the [main branch README](https://github.com/roman/nixDir#readme).
+
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![Github Action Tests Status](https://github.com/roman/nixDir/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/roman/nixDir/actions/workflows/pre-commit.yml)
 
