@@ -1,4 +1,8 @@
-{ pkgs, lib, inputs }:
+{
+  pkgs,
+  lib,
+  inputs,
+}:
 let
   # Flake module with self argument applied
   flakeModule = import ../default.nix;

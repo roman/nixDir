@@ -1,4 +1,9 @@
-{ hello-myproj, hallo-myproj, devenv, writeText }:
+{
+  hello-myproj,
+  hallo-myproj,
+  devenv,
+  writeText,
+}:
 
 writeText "dependant.txt" ''
   This derivation can access packages defined only in this flake and

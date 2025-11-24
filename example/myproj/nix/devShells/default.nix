@@ -3,7 +3,10 @@
 pkgs:
 
 pkgs.mkShell {
-  buildInputs = [ pkgs.figlet pkgs.lolcat ];
+  buildInputs = [
+    pkgs.figlet
+    pkgs.lolcat
+  ];
   shellHook = ''
     figlet myproj | lolcat
   '';

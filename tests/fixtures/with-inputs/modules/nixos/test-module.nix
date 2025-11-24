@@ -1,8 +1,10 @@
-inputs: { pkgs, config, ... }: {
+inputs:
+{ config, ... }:
+{
   # Example module that receives flake inputs
   # This module uses inputs to demonstrate the with-inputs pattern
 
-  options = {};
+  options = { };
 
   config = {
     # Module receives inputs and can access them

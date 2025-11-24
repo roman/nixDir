@@ -1,4 +1,8 @@
-{ pkgs, lib, inputs }:
+{
+  pkgs,
+  lib,
+  inputs,
+}:
 let
   importer = import ../src/importer.nix {
     inherit pkgs lib inputs;

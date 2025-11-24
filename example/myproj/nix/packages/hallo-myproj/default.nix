@@ -1,4 +1,8 @@
-{ hello, makeWrapper, symlinkJoin }:
+{
+  hello,
+  makeWrapper,
+  symlinkJoin,
+}:
 # We are going to do an essential wrapping of the hello package, following steps
 # from: https://nixos.wiki/wiki/Nix_Cookbook#Wrapping_packages
 symlinkJoin {
