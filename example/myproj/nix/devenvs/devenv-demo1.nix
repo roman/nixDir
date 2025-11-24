@@ -1,4 +1,5 @@
-{ pkgs, ... }: {
+{ pkgs, ... }:
+{
   config = {
     packages = [ pkgs.cowsay ];
     languages.go.enable = true;

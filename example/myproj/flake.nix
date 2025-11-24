@@ -2,7 +2,9 @@
   description = "example flake for nixDir";
 
   inputs = {
-    nixDir = { url = "git+file:./../../"; };
+    nixDir = {
+      url = "git+file:./../../";
+    };
     # use the same dependencies as the root flake
     nixpkgs.follows = "nixDir/nixpkgs";
     flake-parts.follows = "nixDir/flake-parts";
@@ -13,11 +15,19 @@
     nix2container.follows = "nixDir/nix2container";
   };
 
-  outputs = { flake-parts, ... }@inputs:
+  outputs =
+    { flake-parts, ... }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       debug = true;
-      systems = [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      imports = [ inputs.devenv.flakeModule inputs.nixDir.flakeModule ];
+      systems = [
+        "x86_64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      imports = [
+        inputs.devenv.flakeModule
+        inputs.nixDir.flakeModule
+      ];
       nixDir = {
         # (Required) Enable discovery of flake outputs from a directory (required).
         enable = true;
@@ -44,20 +54,20 @@
         # defaults to false).
         generateAllPackage = true;
 
-	# (Optional) Generates a flake overlay that contains all the packages defined in
-	# this flake.
-	generateFlakeOverlay = true;
+        # (Optional) Generates a flake overlay that contains all the packages defined in
+        # this flake.
+        generateFlakeOverlay = true;
 
-	# (Optional) Have all the packages defined in this flake available in the
-	# flake-part's perSystem pkgs argument for this flake. This setting sets
-	# generateFlakeOverlay to true automatically.
-	installFlakeOverlay = true;
+        # (Optional) Have all the packages defined in this flake available in the
+        # flake-part's perSystem pkgs argument for this flake. This setting sets
+        # generateFlakeOverlay to true automatically.
+        installFlakeOverlay = true;
 
-	# (Optional) Have all the packages from the overlays in the given list available in
-	# the perSystem pkgs argument for this flake.
-	installOverlays = [
-	  inputs.devenv.overlays.default
-	];
+        # (Optional) Have all the packages from the overlays in the given list available in
+        # the perSystem pkgs argument for this flake.
+        installOverlays = [
+          inputs.devenv.overlays.default
+        ];
       };
     };
 }

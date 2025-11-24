@@ -1,4 +1,5 @@
-inputs: { pkgs, ... }:
+inputs:
+{ pkgs, ... }:
 # Example package that receives flake inputs
 # This demonstrates using inputs to access packages from other flakes
 

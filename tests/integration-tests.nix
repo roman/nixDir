@@ -1,4 +1,4 @@
-{ pkgs, lib, inputs }:
+{ ... }:
 let
   examplePath = ../example/myproj;
 in

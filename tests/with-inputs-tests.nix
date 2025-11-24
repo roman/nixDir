@@ -1,4 +1,8 @@
-{ pkgs, lib, inputs }:
+{
+  pkgs,
+  lib,
+  inputs,
+}:
 let
   importer = import ../src/importer.nix {
     inherit pkgs lib inputs;
@@ -34,7 +38,10 @@ in
           modulesPath = "${withInputsPath}/modules/nixos";
           modules = importer.importDirWithInputs modulesPath;
           # Call the module function with pkgs and minimal args
-          evaluated = modules.test-module { inherit pkgs; config = {}; };
+          evaluated = modules.test-module {
+            inherit pkgs;
+            config = { };
+          };
         in
         # Verify it has the _meta attribute showing it received inputs
         evaluated._meta.hasInputs == true && evaluated._meta.inputCount > 0;
@@ -121,7 +128,10 @@ in
           isFunction = builtins.isFunction module;
 
           # When called with pkgs/config, should return module definition
-          evaluated = module { inherit pkgs; config = {}; };
+          evaluated = module {
+            inherit pkgs;
+            config = { };
+          };
         in
         isFunction && builtins.isAttrs evaluated;
     }

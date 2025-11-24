@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.services.my-hello;
@@ -7,9 +12,12 @@ let
     set -euo pipefail
     while true; do ${pkgs.hello}/bin/hello -g "my-hello enabled" && sleep 1; done
   '';
-in {
+in
+{
   options = {
-    services.my-hello = { enable = lib.mkEnableOption "My Hello World app"; };
+    services.my-hello = {
+      enable = lib.mkEnableOption "My Hello World app";
+    };
   };
 
   config = lib.mkIf cfg.enable {

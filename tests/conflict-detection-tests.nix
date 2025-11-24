@@ -1,4 +1,8 @@
-{ pkgs, lib, inputs }:
+{
+  pkgs,
+  lib,
+  inputs,
+}:
 let
   importer = import ../src/importer.nix {
     inherit pkgs lib inputs;
@@ -52,10 +56,10 @@ in
           # The error will be in the trace/exception, but we can verify it failed
           errorOccurred = !result.success;
 
-          # We can't easily inspect the error message content in pure Nix with tryEval,
-          # but we can verify that it does throw an error (success == false)
-          # The actual error message check is better done in the script test above
         in
+        # We can't easily inspect the error message content in pure Nix with tryEval,
+        # but we can verify that it does throw an error (success == false)
+        # The actual error message check is better done in the script test above
         errorOccurred;
     }
   ];
