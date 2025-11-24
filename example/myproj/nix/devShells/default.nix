@@ -1,5 +1,6 @@
-# devShells receive the system, the flake inputs, and the imported nixpkgs input.
-inputs: pkgs:
+# Regular devShells receive only pkgs (portable).
+# For with-inputs devShells, use nix/with-inputs/devshells/ with signature: inputs: pkgs:
+pkgs:
 
 pkgs.mkShell {
   buildInputs = [ pkgs.figlet pkgs.lolcat ];
