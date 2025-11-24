@@ -223,10 +223,27 @@ let
       in
       acc // { "${key}" = shell; }
     ) { } (nixSubDirNames path ++ nixFiles path);
+
+  # importPackagesWithInputs traverses each file/subdirectory in the given path looking for a
+  # package configuration that needs flake inputs. Files have signature: flakeInputs: { pkgs args... }: derivation
+  importPackagesWithInputs =
+    path:
+    builtins.foldl' (
+      acc: entryName:
+      let
+        # the key sometimes may be a directory name, other times it may be a
+        # .nix file name. Remove the .nix suffix to standarize.
+        key = lib.removeSuffix ".nix" entryName;
+        # Import the file, call it with inputs first, then call the result with callPackage
+        package = pkgs.callPackage (importFile "${path}/${entryName}" inputs) { };
+      in
+      acc // { "${key}" = package; }
+    ) { } (nixSubDirNames path ++ nixFiles path);
 in
 {
   inherit
     importPackages
+    importPackagesWithInputs
     importNixOSModules
     importNixOSModulesWithInputs
     importDevenvs

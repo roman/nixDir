@@ -281,7 +281,7 @@ in
 
             withInputsPackages =
               if builtins.pathExists withInputsPackagesPath then
-                importer.importPackagesWithInputs packagesPath
+                importer.importPackagesWithInputs withInputsPackagesPath
               else
                 { };
 
