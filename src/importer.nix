@@ -49,11 +49,24 @@ let
       in acc // { "${key}" = pkgs.callPackage "${path}/${entryName}" { }; }) { }
     (nixSubDirNames path ++ nixFiles path);
 
+  dirCallPackageWithInputs = path:
+    builtins.foldl' (acc: entryName:
+      let
+        # the key sometimes may be a directory name, other times it may be a
+        # .nix file name. Remove the .nix suffix to standarize.
+        key = lib.removeSuffix ".nix" entryName;
+      in acc // { "${key}" = pkgs.callPackage (import "${path}/${entryName}" inputs) { }; }) { }
+    (nixSubDirNames path ++ nixFiles path);
+
   # importPackages traverses each file/subdirectory in the given path looking for a
   # package configuration.
   importPackages = dirCallPackage;
 
-  importDir = path:
+  importPackagesWithInputs = dirCallPackageWithInputs;
+
+  # importDirWithoutInputs imports files from a directory without passing inputs.
+  # The imported files should be plain attribute sets or functions expecting module args.
+  importDirWithoutInputs = path:
     builtins.foldl' (acc: entryName:
       let
         # the key sometimes may be a directory name, other times it may be a
@@ -61,6 +74,10 @@ let
         key = lib.removeSuffix ".nix" entryName;
       in acc // { "${key}" = importFile "${path}/${entryName}"; }) { }
     (nixSubDirNames path ++ nixFiles path);
+
+  # importDir imports files that expect standard module arguments.
+  # For modules that need flake inputs, use with-inputs/ directory structure.
+  importDir = importDirWithoutInputs;
 
   importDirWithInputs = path:
     builtins.foldl' (acc: entryName:
@@ -71,9 +88,7 @@ let
       in acc // { "${key}" = importFile "${path}/${entryName}" inputs; }) { }
     (nixSubDirNames path ++ nixFiles path);
 
-  # importDevenvs traverses each file in the given path looking for a devenv
-  # configuration.
-  importDevenvs = path:
+  _importDevenvs = innerImporter: path:
     lib.mapAttrs (name: attrs:
       if !(inputs ? devenv) then
         throw ''
@@ -89,26 +104,45 @@ let
           }
         ''
       else
-        attrs) (importDir path);
+        attrs) (innerImporter path);
+
+  # importDevenvs traverses each file in the given path looking for a devenv configuration.
+  importDevenvs = _importDevenvs importDir;
+
+  # importDevenvsWithInputs for with-inputs/ directory.
+  importDevenvsWithInputs = _importDevenvs importDirWithInputs;
 
   # importNixOSModules traverses each file in the given path looking for a NixOS
   # configuration.
   importNixOSModules = importDir;
 
-  # importNixOSConfigurations traverses each file in the given path looking for a NixOS
-  # configuration.
-  importNixOSConfigurations = path: lib.mapAttrs (_name: attrs:
+  # importNixOSModulesWithInputs for with-inputs/ directory.
+  importNixOSModulesWithInputs = importDirWithInputs;
+
+  _importNixOSConfigurations = innerImporter: path: lib.mapAttrs (_name: attrs:
     inputs.nixpkgs.lib.nixosSystem
     (attrs // { specialArgs = { inherit inputs; }; }))
-    (importDirWithInputs path);
+    (innerImporter path);
+
+  # importNixOSConfigurations traverses each file in the given path looking for a NixOS
+  # configuration. Regular (portable) version - files return { system, modules, ... }
+  importNixOSConfigurations =
+    _importNixOSConfigurations importDir;
+
+  # importNixOSConfigurationsWithInputs for with-inputs/ directory.
+  # Files have signature: inputs: { system, modules, ... }
+  importNixOSConfigurationsWithInputs =
+    _importNixOSConfigurations importDirWithInputs;
 
   # importDarwinModules traverses each file in the given path looking for a nix-darwin
   # configuration.
   importDarwinModules = importDir;
 
-  # importNixDarwinConfigurations traverses each file in the given path looking for a
-  # nix-darwin configuration.
-  importDarwinConfigurations = path:
+  # importDarwinModulesWithInputs for with-inputs/ directory.
+  # Files have signature: inputs: { system, modules, ... }
+  importDarwinModulesWithInputs = importDirWithInputs;
+
+  _importDarwinConfigurations = innerImporter: path:
     lib.mapAttrs (name: attrs:
       if !(inputs ? nix-darwin) then
         throw ''
@@ -126,17 +160,64 @@ let
       else
         inputs.nix-darwin.lib.darwinSystem
         (attrs // { specialArgs = { inherit inputs; }; }))
-    (importDirWithInputs path);
+    (innerImporter path);
+
+  # importDarwinConfigurations traverses each file in the given path looking for a
+  # nix-darwin configuration. Regular (portable) version - files return { system, modules, ... }
+  importDarwinConfigurations =
+    _importDarwinConfigurations importDir;
+
+  # importDarwinConfigurationsWithInputs for with-inputs/ directory.
+  # Files have signature: inputs: { system, modules, ... }
+  importDarwinConfigurationsWithInputs =
+    _importDarwinConfigurations importDirWithInputs;
 
   # importHomeManagerModules traverses each file in the given path looking for a
   # home-manager configuration.
   importHomeManagerModules = importDir;
 
+  # importHomeManagerModulesWithInputs for with-inputs/ directory.
+  # Files have signature: inputs: { system, modules, ... }
+  importHomeManagerModulesWithInputs = importDirWithInputs;
+
   # importDevenvModules traverses each file in the given path looking for a
   # devenv configuration.
   importDevenvModules = importDir;
+
+  # importDevShells traverses each file in the given path looking for a devShell
+  # configuration. Files have signature: pkgs: mkShell { ... }
+  importDevShells = path:
+    builtins.foldl' (acc: entryName:
+      let
+        # the key sometimes may be a directory name, other times it may be a
+        # .nix file name. Remove the .nix suffix to standarize.
+        key = lib.removeSuffix ".nix" entryName;
+        # Import the file and call it with pkgs only (portable)
+        shell = importFile "${path}/${entryName}" pkgs;
+      in acc // { "${key}" = shell; }) { }
+    (nixSubDirNames path ++ nixFiles path);
+
+  # importDevShellsWithInputs traverses each file in the given path looking for a devShell
+  # configuration. Files have signature: inputs: pkgs: mkShell { ... }
+  importDevShellsWithInputs = path:
+    builtins.foldl' (acc: entryName:
+      let
+        # the key sometimes may be a directory name, other times it may be a
+        # .nix file name. Remove the .nix suffix to standarize.
+        key = lib.removeSuffix ".nix" entryName;
+        # Import the file and call it with inputs and pkgs
+        shell = importFile "${path}/${entryName}" inputs pkgs;
+      in acc // { "${key}" = shell; }) { }
+    (nixSubDirNames path ++ nixFiles path);
 in {
-  inherit importPackages importDevenvs importNixOSModules
-    importNixOSConfigurations importDarwinModules importDarwinConfigurations
-    importHomeManagerModules importDevenvModules;
+  inherit importPackages
+    importNixOSModules importNixOSModulesWithInputs
+    importDevenvs importDevenvsWithInputs 
+    importNixOSConfigurations importNixOSConfigurationsWithInputs
+    importDarwinModules importDarwinModulesWithInputs
+    importDarwinConfigurations importDarwinConfigurationsWithInputs
+    importHomeManagerModules importHomeManagerModulesWithInputs
+    importDevenvModules
+    importDevShells importDevShellsWithInputs
+    importDirWithoutInputs importDir importDirWithInputs;
 }
