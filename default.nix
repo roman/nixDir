@@ -3,6 +3,12 @@ _nixDirFlake:
 let
   cfg = config.nixDir;
   path = "${cfg.root}/${cfg.dirName}";
+
+  flakeLib = import ./lib.nix {
+    inherit lib;
+    inherit (cfg) dirName;
+  };
+  inherit (flakeLib) checkConflicts;
 in {
   options = {
     nixDir = {
@@ -85,61 +91,111 @@ in {
       addNixOSModules = acc:
         let
           nixosModulesPath = "${path}/modules/nixos";
-          nixosModules = if builtins.pathExists nixosModulesPath then {
-            nixosModules = importer.importNixOSModules nixosModulesPath;
-          } else
+          withInputsNixosModulesPath = "${path}/with-inputs/modules/nixos";
+
+          regularModules = if builtins.pathExists nixosModulesPath then
+            importer.importNixOSModules nixosModulesPath
+          else
             { };
-        in lib.mkMerge [ acc nixosModules ];
+
+          withInputsModules = if builtins.pathExists withInputsNixosModulesPath then
+            importer.importDirWithInputs withInputsNixosModulesPath
+          else
+            { };
+
+          allModules = checkConflicts "modules/nixos" regularModules withInputsModules;
+        in lib.mkMerge [ acc (lib.mkIf (builtins.length (builtins.attrNames allModules) > 0) { nixosModules = allModules; }) ];
 
       addNixOSConfigurations = acc:
         let
           nixosConfigurationsPath = "${path}/configurations/nixos";
-          nixosConfigurations =
-            if builtins.pathExists nixosConfigurationsPath then {
-              nixosConfigurations =
-                importer.importNixOSConfigurations nixosConfigurationsPath;
-            } else
-              { };
-        in lib.mkMerge [ acc nixosConfigurations ];
+          withInputsNixosConfigurationsPath = "${path}/with-inputs/configurations/nixos";
+
+          regularConfigs = if builtins.pathExists nixosConfigurationsPath then
+            importer.importNixOSConfigurations nixosConfigurationsPath
+          else
+            { };
+
+          withInputsConfigs = if builtins.pathExists withInputsNixosConfigurationsPath then
+            importer.importNixOSConfigurationsWithInputs withInputsNixosConfigurationsPath
+          else
+            { };
+
+          allConfigs = checkConflicts "configurations/nixos" regularConfigs withInputsConfigs;
+        in lib.mkMerge [ acc (lib.mkIf (builtins.length (builtins.attrNames allConfigs) > 0) { nixosConfigurations = allConfigs; }) ];
 
       addNixDarwinModules = acc:
         let
           nixDarwinModulesPath = "${path}/modules/darwin";
-          darwinModules = if builtins.pathExists nixDarwinModulesPath then {
-            darwinModules = importer.importDarwinModules nixDarwinModulesPath;
-          } else
+          withInputsDarwinModulesPath = "${path}/with-inputs/modules/darwin";
+
+          regularModules = if builtins.pathExists nixDarwinModulesPath then
+            importer.importDarwinModules nixDarwinModulesPath
+          else
             { };
-        in lib.mkMerge [ acc darwinModules ];
+
+          withInputsModules = if builtins.pathExists withInputsDarwinModulesPath then
+            importer.importDarwinModulesWithInputs withInputsDarwinModulesPath
+          else
+            { };
+
+          allModules = checkConflicts "modules/darwin" regularModules withInputsModules;
+        in lib.mkMerge [ acc (lib.mkIf (builtins.length (builtins.attrNames allModules) > 0) { darwinModules = allModules; }) ];
 
       addNixDarwinConfigurations = acc:
         let
           nixDarwinConfigurationsPath = "${path}/configurations/darwin";
-          darwinConfigurations =
-            if builtins.pathExists nixDarwinConfigurationsPath then {
-              darwinConfigurations =
-                importer.importDarwinConfigurations nixDarwinConfigurationsPath;
-            } else
-              { };
-        in lib.mkMerge [ acc darwinConfigurations ];
+          withInputsDarwinConfigurationsPath = "${path}/with-inputs/configurations/darwin";
+
+          regularConfigs = if builtins.pathExists nixDarwinConfigurationsPath then
+            importer.importDarwinConfigurations nixDarwinConfigurationsPath
+          else
+            { };
+
+          withInputsConfigs = if builtins.pathExists withInputsDarwinConfigurationsPath then
+            importer.importDarwinConfigurationsWithInputs withInputsDarwinConfigurationsPath
+          else
+            { };
+
+          allConfigs = checkConflicts "configurations/darwin" regularConfigs withInputsConfigs;
+        in lib.mkMerge [ acc (lib.mkIf (builtins.length (builtins.attrNames allConfigs) > 0) { darwinConfigurations = allConfigs; }) ];
 
       addHomeManagerModules = acc:
         let
           homeManagerModulesPath = "${path}/modules/home-manager";
-          homeManagerModules =
-            if builtins.pathExists homeManagerModulesPath then
-              importer.importHomeManagerModules homeManagerModulesPath
-            else
-              { };
-        in lib.mkMerge [ acc { inherit homeManagerModules; } ];
+          withInputsHomeManagerModulesPath = "${path}/with-inputs/modules/home-manager";
+
+          regularModules = if builtins.pathExists homeManagerModulesPath then
+            importer.importHomeManagerModules homeManagerModulesPath
+          else
+            { };
+
+          withInputsModules = if builtins.pathExists withInputsHomeManagerModulesPath then
+            importer.importHomeManagerModulesWithInputs withInputsHomeManagerModulesPath
+          else
+            { };
+
+          homeManagerModules = checkConflicts "modules/home-manager" regularModules withInputsModules;
+
+        in lib.mkMerge [ acc (lib.mkIf (builtins.length (builtins.attrNames homeManagerModules) > 0) { inherit homeManagerModules; }) ];
 
       addDevenvModules = acc:
         let
           devenvModulesPath = "${path}/modules/devenv";
-          devenvModules = if builtins.pathExists devenvModulesPath then
+          withInputsDevenvModulesPath = "${path}/with-inputs/modules/devenv";
+
+          regularModules = if builtins.pathExists devenvModulesPath then
             importer.importDevenvModules devenvModulesPath
           else
             { };
-        in lib.mkMerge [ acc { inherit devenvModules; } ];
+
+          withInputsModules = if builtins.pathExists withInputsDevenvModulesPath then
+            importer.importDevenvModulesWithInputs withInputsDevenvModulesPath
+          else
+            { };
+
+          devenvModules = checkConflicts "modules/devenv" regularModules withInputsModules;
+        in lib.mkMerge [ acc (lib.mkIf (builtins.length (builtins.attrNames devenvModules) > 0) { inherit devenvModules; }) ];
 
       addFlakeOverlay = acc:
         lib.mkMerge [
@@ -169,10 +225,20 @@ in {
         addPackages = acc:
           let
             packagesPath = "${path}/packages";
-            resultPackages = if builtins.pathExists packagesPath then
+            withInputsPackagesPath = "${path}/with-inputs/packages";
+
+            regularPackages = if builtins.pathExists packagesPath then
               importer.importPackages packagesPath
             else
               { };
+
+            withInputsPackages = if builtins.pathExists withInputsPackagesPath then
+              importer.importPackagesWithInputs packagesPath
+            else
+              { };
+
+            resultPackages = checkConflicts "packages" regularPackages withInputsPackages;
+
             shellPkgs =
               # shellPkgs are all the devShells derivations, these allow us to
               # cache shells the same way we do packages.
@@ -201,14 +267,66 @@ in {
             ];
           in lib.mkMerge [ acc nixDirPackages ];
 
-        addDevenvs = acc:
+        addDevShellsAndDevenvs = acc:
           let
-            devenvsPath = "${path}/devenvs";
-            devenvEntries = if builtins.pathExists devenvsPath then {
-              devenv.shells = importer.importDevenvs devenvsPath;
-            } else
+            # Import devShells from all locations
+            devShellsPath = "${path}/devshells";
+            withInputsDevShellsPath = "${path}/with-inputs/devshells";
+
+            regularDevShells = if builtins.pathExists devShellsPath then
+              importer.importDevShells devShellsPath
+            else
               { };
-          in lib.mkMerge [ acc devenvEntries ];
+
+            withInputsDevShells = if builtins.pathExists withInputsDevShellsPath then
+              importer.importDevShellsWithInputs withInputsDevShellsPath
+            else
+              { };
+
+            # Conflict check between regular and with-inputs devShells
+            allDevShells = checkConflicts "devshells" regularDevShells withInputsDevShells;
+
+            # Import devenvs from all locations
+            devenvsPath = "${path}/devenvs";
+            withInputsDevenvsPath = "${path}/with-inputs/devenvs";
+
+            regularDevenvs = if builtins.pathExists devenvsPath then
+              importer.importDevenvs devenvsPath
+            else
+              { };
+
+            withInputsDevenvs = if builtins.pathExists withInputsDevenvsPath then
+              importer.importDevenvsWithInputs withInputsDevenvsPath
+            else
+              { };
+
+            # Conflict check between regular and with-inputs devenvs
+            allDevenvs = checkConflicts "devenvs" regularDevenvs withInputsDevenvs;
+
+            # Cross-conflict check: devShells vs devenvs
+            crossConflicts = builtins.filter (name: allDevenvs ? ${name})
+              (builtins.attrNames allDevShells);
+
+            hasCrossConflicts = builtins.length crossConflicts > 0;
+
+            result = if hasCrossConflicts then
+              throw ''
+                nixDir found conflicting entries between devShells and devenvs:
+                ${lib.concatStringsSep ", " crossConflicts}
+
+                DevEnv creates devShells internally, so each name must be unique across both.
+
+                DevShells: ${cfg.dirName}/devshells/ or ${cfg.dirName}/with-inputs/devshells/
+                DevEnvs: ${cfg.dirName}/devenvs/ or ${cfg.dirName}/with-inputs/devenvs/
+
+                Please rename or remove the conflicting entries.
+              ''
+            else
+              {
+                devShells = allDevShells;
+                devenv.shells = allDevenvs;
+              };
+          in lib.mkMerge [ acc result ];
 
         addDevenvModules = acc:
           let
@@ -246,7 +364,7 @@ in {
 
       in builtins.foldl' (acc: f: f acc) { } ([ addPackages ]
         ++ lib.optionals (inputs ? nixpkgs) [ installOverlays ]
-        ++ lib.optionals (inputs ? devenv) [ addDevenvs addDevenvModules ]);
+        ++ lib.optionals (inputs ? devenv) [ addDevShellsAndDevenvs addDevenvModules ]);
   };
 }
 
