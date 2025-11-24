@@ -4,8 +4,9 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
 
     devenv.url = "github:cachix/devenv";
+    mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
     nix2container.url = "github:nlewo/nix2container";
-    nix2container.inputs = { nixpkgs.follows = "nixpkgs"; };
+    nix2container.inputs.nixpkgs.follows = "nixpkgs";
 
     nixtest.url = "gitlab:technofab/nixtest?dir=lib";
 
@@ -23,13 +24,9 @@
       };
       perSystem = { pkgs, lib, config, ... }: {
         devenv.shells.default = {
-          devenv.root = builtins.toString ./.;
-
-          packages = [ config.treefmt.build.wrapper ];
-
           git-hooks.hooks = {
             deadnix.enable = true;
-            nixfmt-classic.enable = true;
+            nixfmt-rfc-style.enable = true;
             nil.enable = true;
           };
         };
