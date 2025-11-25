@@ -125,6 +125,33 @@ nixDir automatically:
 3. Imported it with `pkgs.callPackage`
 4. Exposed it as a flake output
 
+### Platform-Specific Packages
+
+By default, nixDir only exposes packages that are compatible with the current system based on
+their `meta.platforms` attribute. This prevents build failures and keeps your flake outputs clean.
+
+To create a platform-specific package, add the `meta.platforms` attribute:
+
+```nix
+# nix/packages/linux-tool.nix
+{ stdenv, lib }:
+
+stdenv.mkDerivation {
+  pname = "linux-tool";
+  version = "1.0.0";
+  # ... rest of package definition
+
+  meta = {
+    description = "A Linux-only tool";
+    platforms = lib.platforms.linux;
+  };
+}
+```
+
+This package will only appear in outputs for Linux systems. Packages without `meta.platforms`
+are available on all systems. See [Directory Structure](./directory-structure.md#packages) for
+more details.
+
 ## Next Steps
 
 ### Create a Development Shell

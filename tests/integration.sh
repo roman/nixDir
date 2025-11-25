@@ -192,6 +192,118 @@ test_conflict_detection() {
   fi
 }
 
+# Test: Platform filtering - Linux package not on Darwin
+test_platform_linux_package_not_on_darwin() {
+  run_test "Platform filtering: linux-tool not available on darwin"
+
+  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+
+  local output
+  if output=$(nix eval .#packages.x86_64-darwin --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
+    if echo "$output" | grep -q "linux-tool"; then
+      echo "linux-tool should NOT be available on x86_64-darwin"
+      echo "Output: $output"
+      test_failed "Platform filtering: linux-tool not available on darwin"
+    else
+      test_passed "Platform filtering: linux-tool not available on darwin"
+    fi
+  else
+    echo "Error output: $output"
+    test_failed "Platform filtering: linux-tool not available on darwin"
+  fi
+}
+
+# Test: Platform filtering - Linux package on Linux
+test_platform_linux_package_on_linux() {
+  run_test "Platform filtering: linux-tool available on linux"
+
+  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+
+  local output
+  if output=$(nix eval .#packages.x86_64-linux --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
+    if assert_contains "linux-tool" "$output" "linux-tool should be available on x86_64-linux"; then
+      test_passed "Platform filtering: linux-tool available on linux"
+    fi
+  else
+    echo "Error output: $output"
+    test_failed "Platform filtering: linux-tool available on linux"
+  fi
+}
+
+# Test: Platform filtering - Darwin package not on Linux
+test_platform_darwin_package_not_on_linux() {
+  run_test "Platform filtering: darwin-tool not available on linux"
+
+  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+
+  local output
+  if output=$(nix eval .#packages.x86_64-linux --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
+    if echo "$output" | grep -q "darwin-tool"; then
+      echo "darwin-tool should NOT be available on x86_64-linux"
+      echo "Output: $output"
+      test_failed "Platform filtering: darwin-tool not available on linux"
+    else
+      test_passed "Platform filtering: darwin-tool not available on linux"
+    fi
+  else
+    echo "Error output: $output"
+    test_failed "Platform filtering: darwin-tool not available on linux"
+  fi
+}
+
+# Test: Platform filtering - Darwin package on Darwin
+test_platform_darwin_package_on_darwin() {
+  run_test "Platform filtering: darwin-tool available on darwin"
+
+  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+
+  local output
+  if output=$(nix eval .#packages.x86_64-darwin --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
+    if assert_contains "darwin-tool" "$output" "darwin-tool should be available on x86_64-darwin"; then
+      test_passed "Platform filtering: darwin-tool available on darwin"
+    fi
+  else
+    echo "Error output: $output"
+    test_failed "Platform filtering: darwin-tool available on darwin"
+  fi
+}
+
+# Test: Platform filtering - Universal package on all systems
+test_platform_universal_package() {
+  run_test "Platform filtering: universal-tool available on all systems"
+
+  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+
+  local linux_output darwin_output
+  local all_passed=true
+
+  if linux_output=$(nix eval .#packages.x86_64-linux --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
+    if ! echo "$linux_output" | grep -q "universal-tool"; then
+      echo "universal-tool should be available on x86_64-linux"
+      all_passed=false
+    fi
+  else
+    echo "Error evaluating linux packages: $linux_output"
+    all_passed=false
+  fi
+
+  if darwin_output=$(nix eval .#packages.x86_64-darwin --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
+    if ! echo "$darwin_output" | grep -q "universal-tool"; then
+      echo "universal-tool should be available on x86_64-darwin"
+      all_passed=false
+    fi
+  else
+    echo "Error evaluating darwin packages: $darwin_output"
+    all_passed=false
+  fi
+
+  if [ "$all_passed" = true ]; then
+    test_passed "Platform filtering: universal-tool available on all systems"
+  else
+    test_failed "Platform filtering: universal-tool available on all systems"
+  fi
+}
+
 # Main test execution
 main() {
   echo "========================================"
@@ -204,6 +316,11 @@ main() {
   test_hello_package_builds
   test_flake_overlay_generated
   test_conflict_detection
+  test_platform_linux_package_not_on_darwin
+  test_platform_linux_package_on_linux
+  test_platform_darwin_package_not_on_linux
+  test_platform_darwin_package_on_darwin
+  test_platform_universal_package
 
   # Print summary
   echo ""

@@ -74,6 +74,41 @@ stdenv.mkDerivation {
 
 **Result**: Available as `packages.x86_64-linux.my-tool` (and other systems)
 
+**Platform-Specific Packages**:
+
+By default, nixDir filters packages based on their `meta.platforms` attribute. Packages without
+this attribute are available on all systems.
+
+```nix
+# nix/packages/linux-only-tool.nix
+{ stdenv, lib }:
+
+stdenv.mkDerivation {
+  pname = "linux-only-tool";
+  version = "1.0.0";
+  src = ./src;
+
+  meta = {
+    description = "A tool that only works on Linux";
+    platforms = lib.platforms.linux;  # Only available on Linux systems
+  };
+}
+```
+
+Common platform specifications:
+- `lib.platforms.linux` - All Linux systems
+- `lib.platforms.darwin` - All macOS systems
+- `lib.platforms.unix` - All Unix-like systems
+- `[ "x86_64-linux" "aarch64-linux" ]` - Specific systems only
+
+Packages with `meta.broken = true` are automatically filtered out. To disable platform filtering,
+set `nixDir.filterUnsupportedSystems = false` in your flake configuration.
+
+**Important Note**: Platform filtering is automatically disabled when `generateAllPackage = true`
+to avoid infinite recursion with the flake overlay. If you need platform filtering with the
+"all" package, consider disabling `generateAllPackage` and creating your own aggregate package,
+or manually set `filterUnsupportedSystems = false`.
+
 ### devshells/
 
 **Purpose**: Simple development environments using `pkgs.mkShell`

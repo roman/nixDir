@@ -23,4 +23,33 @@
       ''
     else
       regular // withInputs;
+
+  # filterByPlatform filters packages based on meta.platforms and meta.broken attributes.
+  # Packages without meta.platforms are available on all systems.
+  # Packages with meta.broken = true are always filtered out.
+  filterByPlatform =
+    system: packages:
+    lib.filterAttrs (
+      _name: pkg:
+      let
+        # Check if this is actually a derivation
+        isDrv = lib.isDerivation pkg;
+
+        # Get meta.platforms, default to null (all platforms supported)
+        platforms = pkg.meta.platforms or null;
+
+        # Check if package is marked as broken
+        broken = pkg.meta.broken or false;
+
+        # Determine if the package is supported on this system
+        isSupported =
+          if platforms == null then
+            true # No restriction = all platforms supported
+          else if builtins.isList platforms then
+            builtins.elem system platforms
+          else
+            false; # Invalid platforms value, filter it out
+      in
+      isDrv && !broken && isSupported
+    ) packages;
 }

@@ -23,6 +23,8 @@ predictably, and it "just works".
   inputs, regular directories for portable resources
 - **Cross-platform support**: NixOS, nix-darwin, home-manager and devenv modules
 - **Development environments**: Automatic discovery of devShells and devenv configurations
+- **Platform-aware filtering**: Automatically filters packages based on `meta.platforms`,
+  only exposing compatible packages for each system
 - **Type safety**: Built on flake-parts' module system
 
 ## Getting Started
@@ -66,6 +68,8 @@ Key options:
 - `enable` / `root` - Required
 - `dirName` - Config directory name (default: `"nix"`)
 - `installFlakeOverlay` - Make packages available in `pkgs` across all your outputs
+- `filterUnsupportedSystems` - Filter packages by `meta.platforms` (default: `true`)
+  - Note: Automatically disabled when `generateAllPackage = true` to avoid infinite recursion
 
 See [example flake.nix](./example/myproj/flake.nix) for all options.
 

@@ -14,7 +14,7 @@ let
     inherit lib;
     inherit (cfg) dirName;
   };
-  inherit (flakeLib) checkConflicts;
+  inherit (flakeLib) checkConflicts filterByPlatform;
 in
 {
   options = {
@@ -76,6 +76,17 @@ in
         type = lib.types.attrs;
         description = "add configuration to nixpkgs import";
         default = { };
+      };
+
+      filterUnsupportedSystems = lib.mkOption {
+        type = lib.types.bool;
+        description = ''
+          Filter packages based on meta.platforms attribute.
+          When enabled, packages are only exposed for systems listed in their meta.platforms.
+          Packages without meta.platforms are available on all systems.
+          Packages with meta.broken = true are always filtered out.
+        '';
+        default = true;
       };
 
     };
@@ -287,6 +298,20 @@ in
 
             resultPackages = checkConflicts "packages" regularPackages withInputsPackages;
 
+            # Filter packages based on meta.platforms if enabled
+            # Note: We filter lazily to avoid infinite recursion with the flake overlay
+            filteredPackages =
+              if cfg.filterUnsupportedSystems then filterByPlatform system resultPackages else resultPackages;
+
+            # When generateAllPackage is true, we have a potential infinite recursion:
+            # packages -> devShells -> pkgs (with overlay) -> packages
+            # To avoid this, we disable filtering when generateAllPackage is enabled.
+            # Users who need both features should set filterUnsupportedSystems=false
+            # or disable generateAllPackage.
+            shouldFilter = cfg.filterUnsupportedSystems && !cfg.generateAllPackage;
+
+            finalPackages = if shouldFilter then filteredPackages else resultPackages;
+
             shellPkgs =
               # shellPkgs are all the devShells derivations, these allow us to
               # cache shells the same way we do packages.
@@ -302,20 +327,21 @@ in
                   }
               ) inputs.self.devShells.${pkgs.system};
 
+            # The 'all' package uses finalPackages
             allPackage = pkgs.symlinkJoin {
               name = "all";
               buildInputs = lib.attrValues shellPkgs;
-              paths = lib.attrValues resultPackages;
+              paths = lib.attrValues finalPackages;
             };
 
             nixDirPackages = lib.mkMerge [
               (lib.mkIf cfg.generateAllPackage {
-                packages = resultPackages // {
+                packages = finalPackages // {
                   all = allPackage;
                 };
               })
               (lib.mkIf (!cfg.generateAllPackage) {
-                packages = resultPackages;
+                packages = finalPackages;
               })
             ];
           in

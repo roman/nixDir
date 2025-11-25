@@ -37,26 +37,7 @@
             git-hooks.hooks = {
               deadnix = {
                 enable = true;
-                settings = {
-                  exclude = [
-                    "tests/fixtures/portable-config/configurations/nixos/test-host.nix"
-                    "tests/fixtures/devshells-conflict/devshells/conflict.nix"
-                    "tests/fixtures/devshells-conflict/devenvs/conflict.nix"
-                    "tests/fixtures/with-inputs-conflict/modules/nixos/conflicting.nix"
-                    "tests/fixtures/with-inputs-conflict/with-inputs/modules/nixos/conflicting.nix"
-                    "tests/fixtures/devshells-test/devshells/test-shell.nix"
-                    "tests/fixtures/devshells-test/with-inputs/devshells/with-inputs-shell.nix"
-                    "tests/fixtures/devshells-test/with-inputs/devenvs/with-inputs-env.nix"
-                    "tests/fixtures/devshells-test/devenvs/test-env.nix"
-                    "tests/fixtures/with-inputs/modules/nixos/test-module.nix"
-                    "tests/fixtures/with-inputs/packages/test-pkg.nix"
-                    "tests/fixtures/conflicts/conflict-case/test/default.nix"
-                    "tests/fixtures/conflicts/conflict-case/test.nix"
-                    "tests/fixtures/conflicts/valid-file/test.nix"
-                    "tests/fixtures/conflicts/valid-dir/test/default.nix"
-                  ];
-                };
-
+                settings.edit = true;
               };
               nixfmt-rfc-style.enable = true;
               nil.enable = true;
@@ -87,6 +68,11 @@
 
             # Tests for devShells and devenvs import and conflict detection.
             "devshells" = import ./tests/devshells-tests.nix {
+              inherit pkgs lib inputs;
+            };
+
+            # Tests for platform-aware package filtering based on meta.platforms.
+            "platform-filtering" = import ./tests/platform-filtering-tests.nix {
               inherit pkgs lib inputs;
             };
           };
