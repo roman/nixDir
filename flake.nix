@@ -75,6 +75,11 @@
             "platform-filtering" = import ./tests/platform-filtering-tests.nix {
               inherit pkgs lib inputs;
             };
+
+            # Tests for devenv modules import (importDevenvModules and importDevenvModulesWithInputs).
+            "devenv-modules" = import ./tests/devenv-modules-tests.nix {
+              inherit pkgs lib inputs;
+            };
           };
         };
     };

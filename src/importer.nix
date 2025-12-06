@@ -192,6 +192,10 @@ let
   # devenv configuration.
   importDevenvModules = importDir;
 
+  # importDevenvModulesWithInputs for with-inputs/ directory.
+  # Files have signature: flakeInputs: { pkgs, lib, config, ... }
+  importDevenvModulesWithInputs = importDirWithInputs;
+
   # importDevShells traverses each file in the given path looking for a devShell
   # configuration. Files have signature: pkgs: mkShell { ... }
   importDevShells =
@@ -257,6 +261,7 @@ in
     importHomeManagerModules
     importHomeManagerModulesWithInputs
     importDevenvModules
+    importDevenvModulesWithInputs
     importDevShells
     importDevShellsWithInputs
     importDirWithoutInputs
