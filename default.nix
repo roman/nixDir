@@ -3,7 +3,6 @@ _nixDirFlake:
   lib,
   inputs,
   config,
-  system,
   ...
 }:
 let
@@ -62,8 +61,20 @@ in
 
       installFlakeOverlay = lib.mkOption {
         type = lib.types.bool;
-        description = "install the flake overlay to the pkgs in flake-parts modules";
-        default = true;
+        description = ''
+          Install the flake overlay to the pkgs in flake-parts modules.
+
+          WARNING: Enabling this option can cause infinite recursion if your
+          perSystem configuration references `self'.packages` or if package
+          definitions have complex dependencies on pkgs during evaluation.
+          Only enable if you specifically need your flake's packages available
+          as `pkgs.<package-name>` within your own flake configuration.
+
+          As an alternative, place packages that need access to flake inputs
+          in the `with-inputs/packages/` directory, which provides access to
+          inputs without requiring the flake overlay.
+        '';
+        default = false;
       };
 
       installOverlays = lib.mkOption {
