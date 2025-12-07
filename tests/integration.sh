@@ -140,7 +140,7 @@ test_flake_overlay_generated() {
     --impure \
     --expr '
       let
-        flake = builtins.getFlake "path:'"$PROJECT_ROOT"'";
+        flake = builtins.getFlake "git+file:'"$PROJECT_ROOT"'";
       in
         flake.overlays ? flake
     ' 2>&1; then
@@ -164,7 +164,7 @@ test_conflict_detection() {
     --impure \
     --expr '
       let
-        flake = builtins.getFlake "path:'"$PROJECT_ROOT"'";
+        flake = builtins.getFlake "git+file:'"$PROJECT_ROOT"'";
         importer = import ('"$PROJECT_ROOT"' + "/src/importer.nix") {
           pkgs = null;
           lib = flake.inputs.nixpkgs.lib;
