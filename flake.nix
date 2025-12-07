@@ -1,14 +1,19 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
     flake-parts.url = "github:hercules-ci/flake-parts";
 
+    # TODO: Pin to v1.11.3 when released. v1.11.2 has a bug where
+    # process-compose.configFile is accessed before being defined for devenvs
+    # without processes. The fix (commit 6c6dd472) is on main but not yet released.
     devenv.url = "github:cachix/devenv";
-    mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
+    devenv.inputs.nixpkgs.follows = "nixpkgs";
+
     nix2container.url = "github:nlewo/nix2container";
     nix2container.inputs.nixpkgs.follows = "nixpkgs";
 
     nixtest.url = "gitlab:technofab/nixtest?dir=lib";
+    nixtest.inputs.nixpkgs.follows = "nixpkgs";
 
     systems.url = "github:nix-systems/default";
     systems.flake = false;
