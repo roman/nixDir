@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'v[0-9]*'  # v3, v4, etc.
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    # Only run on push events (not PRs)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for changelog generation
+          fetch-tags: true
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run release script
+        run: nix run .#release -- --push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

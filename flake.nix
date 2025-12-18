@@ -38,6 +38,13 @@
           ...
         }:
         {
+          # Release automation scripts
+          packages = {
+            calculate-version = pkgs.callPackage ./nix/packages/calculate-version.nix { };
+            generate-changelog = pkgs.callPackage ./nix/packages/generate-changelog.nix { };
+            release = pkgs.callPackage ./nix/packages/release.nix { };
+          };
+
           devenv.shells.default = {
             git-hooks.hooks = {
               deadnix = {
