@@ -1,0 +1,3 @@
+# Beads JSONL files use a custom merge driver for safe syncing
+.beads/*.jsonl merge=beads-jsonl
+.beads/*.meta.json merge=beads-jsonl
