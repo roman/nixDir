@@ -11,6 +11,7 @@ let
 
   importer = import ../src/importer.nix {
     inherit pkgs lib inputs;
+    useInputsEverywhere = false;
   };
 
   fixturesPath = ./fixtures/platform-filtering/packages;
