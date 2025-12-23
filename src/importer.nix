@@ -5,6 +5,7 @@
   importFile ? import,
   readDir ? builtins.readDir,
   pathExists ? builtins.pathExists,
+  useInputsEverywhere ? false,
 }:
 let
   # checkDirFileConflict checks if there are conflicting entries for a package
@@ -245,27 +246,36 @@ let
     ) { } (nixSubDirNames path ++ nixFiles path);
 in
 {
+  # When useInputsEverywhere is true, all regular import functions use the WithInputs variants
+  importPackages = if useInputsEverywhere then importPackagesWithInputs else importPackages;
+  importNixOSModules =
+    if useInputsEverywhere then importNixOSModulesWithInputs else importNixOSModules;
+  importDevenvs = if useInputsEverywhere then importDevenvsWithInputs else importDevenvs;
+  importNixOSConfigurations =
+    if useInputsEverywhere then importNixOSConfigurationsWithInputs else importNixOSConfigurations;
+  importDarwinModules =
+    if useInputsEverywhere then importDarwinModulesWithInputs else importDarwinModules;
+  importDarwinConfigurations =
+    if useInputsEverywhere then importDarwinConfigurationsWithInputs else importDarwinConfigurations;
+  importHomeManagerModules =
+    if useInputsEverywhere then importHomeManagerModulesWithInputs else importHomeManagerModules;
+  importDevenvModules =
+    if useInputsEverywhere then importDevenvModulesWithInputs else importDevenvModules;
+  importDevShells = if useInputsEverywhere then importDevShellsWithInputs else importDevShells;
+  importDir = if useInputsEverywhere then importDirWithInputs else importDirWithoutInputs;
+
+  # Keep WithInputs variants available for with-inputs/ directory support
   inherit
-    importPackages
     importPackagesWithInputs
-    importNixOSModules
     importNixOSModulesWithInputs
-    importDevenvs
     importDevenvsWithInputs
-    importNixOSConfigurations
     importNixOSConfigurationsWithInputs
-    importDarwinModules
     importDarwinModulesWithInputs
-    importDarwinConfigurations
     importDarwinConfigurationsWithInputs
-    importHomeManagerModules
     importHomeManagerModulesWithInputs
-    importDevenvModules
     importDevenvModulesWithInputs
-    importDevShells
     importDevShellsWithInputs
     importDirWithoutInputs
-    importDir
     importDirWithInputs
     ;
 }

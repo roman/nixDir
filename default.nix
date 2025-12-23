@@ -100,6 +100,30 @@ in
         default = true;
       };
 
+      importWithInputs = lib.mkOption {
+        type = lib.types.bool;
+        description = ''
+          When enabled, all files in the regular directory tree receive 'inputs'
+          as their first parameter, similar to the with-inputs pattern.
+
+          This eliminates the need for a separate with-inputs directory while
+          maintaining access to flake inputs, reducing cognitive load from
+          split directory structures.
+
+          Example usage:
+            # nix/packages/my-package.nix
+            inputs: { pkgs, ... }:
+            pkgs.writeShellScript "hello" ''''
+              echo "Using ''${inputs.some-input}"
+            ''''
+
+          Note: The with-inputs directories continue to work when this option
+          is enabled, but a warning will be shown if both directory trees exist
+          to encourage unification in the default tree.
+        '';
+        default = false;
+      };
+
     };
   };
 
@@ -109,6 +133,7 @@ in
         importer = import ./src/importer.nix {
           pkgs = null;
           inherit lib inputs;
+          useInputsEverywhere = false;
         };
 
         addNixOSModules =
@@ -290,7 +315,10 @@ in
     perSystem =
       { system, pkgs, ... }:
       let
-        importer = import ./src/importer.nix { inherit pkgs lib inputs; };
+        importer = import ./src/importer.nix {
+          inherit pkgs lib inputs;
+          useInputsEverywhere = false;
+        };
 
         addPackages =
           acc:
