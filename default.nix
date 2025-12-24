@@ -133,7 +133,7 @@ in
         importer = import ./src/importer.nix {
           pkgs = null;
           inherit lib inputs;
-          useInputsEverywhere = false;
+          useInputsEverywhere = cfg.importWithInputs;
         };
 
         addNixOSModules =
@@ -317,7 +317,7 @@ in
       let
         importer = import ./src/importer.nix {
           inherit pkgs lib inputs;
-          useInputsEverywhere = false;
+          useInputsEverywhere = cfg.importWithInputs;
         };
 
         addPackages =
