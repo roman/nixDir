@@ -1,5 +1,5 @@
 inputs:
-{ config, ... }:
+{ ... }:
 {
   # Example module that receives flake inputs
   # This module uses inputs to demonstrate the with-inputs pattern
