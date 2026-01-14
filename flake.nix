@@ -12,6 +12,9 @@
     nix2container.url = "github:nlewo/nix2container";
     nix2container.inputs.nixpkgs.follows = "nixpkgs";
 
+    # needed for running `nix flake check`
+    mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
+
     nixtest.url = "gitlab:technofab/nixtest?dir=lib";
 
     systems.url = "github:nix-systems/default";
