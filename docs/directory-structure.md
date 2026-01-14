@@ -287,16 +287,58 @@ devshells/python-env.nix  → devShells.<system>.python-env
 - `default.nix` inside a directory is special (see above)
 - `default` as a name is valid: `packages/default.nix` → `packages.<system>.default`
 
-## The with-inputs/ Directory
+## Accessing Flake Inputs
 
-The `with-inputs/` directory is for definitions that need access to flake inputs.
+There are two ways to give your files access to flake inputs:
 
-Files in `with-inputs/` receive an extra `inputs` parameter at the beginning of their
-function signature. For example:
+### Option 1: The `importWithInputs` Configuration Option
+
+Enable all files to receive inputs by default:
+
+```nix
+nixDir = {
+  enable = true;
+  root = ./.;
+  importWithInputs = true;  # All files receive inputs
+};
+```
+
+With this option, all files in regular directories receive `inputs` as their first parameter:
+
+```nix
+# nix/packages/my-package.nix (with importWithInputs = true)
+inputs: { pkgs, ... }:
+pkgs.writeShellScript "hello" ''
+  echo "Using ${inputs.some-input}"
+''
+```
+
+**When to use**: You're committed to nixDir and want all files in one place (simpler navigation).
+
+**Tradeoff**: Makes all files non-portable (they require nixDir to provide inputs).
+
+### Option 2: The `with-inputs/` Directory Pattern
+
+Use parallel directory structure for files that need inputs:
+
+```
+nix/
+├── packages/          # Portable packages
+│   └── simple.nix
+└── with-inputs/
+    └── packages/      # Packages needing inputs
+        └── complex.nix
+```
+
+Files in `with-inputs/` receive an extra `inputs` parameter:
 - Regular: `{ pkgs }:`
 - With-inputs: `inputs: { pkgs }:`
 
-See [With-Inputs Pattern](./with-inputs.md) for comprehensive details, examples, and use cases.
+**When to use**: You want portable files that can work outside nixDir, or need a mix of portable and non-portable files.
+
+**Tradeoff**: Requires maintaining parallel directory structures (more cognitive overhead).
+
+See [With-Inputs Pattern](./with-inputs.md) for comprehensive details, examples, and choosing between these approaches.
 
 ## Conflict Detection
 

@@ -68,6 +68,18 @@
         installOverlays = [
           inputs.devenv.overlays.default
         ];
+
+        # (Optional) When enabled, all files in the regular directory tree receive 'inputs'
+        # as their first parameter (similar to the with-inputs pattern).
+        #
+        # Use this when:
+        # - You're committed to using nixDir and want simpler navigation
+        # - You don't need files to be portable outside nixDir
+        # - You want all files in one place instead of split across with-inputs/
+        #
+        # Tradeoff: Makes all files non-portable, but eliminates cognitive load of
+        # maintaining parallel directory structures. See docs/with-inputs.md for details.
+        # importWithInputs = false;  # Default is false
       };
     };
 }

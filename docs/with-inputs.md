@@ -2,6 +2,60 @@
 
 ## Overview
 
+There are two ways to access flake inputs in your nixDir files:
+
+1. **The `with-inputs/` directory pattern** - Separate directories for files that need inputs
+2. **The `importWithInputs` option** - All files receive inputs by default
+
+Both approaches provide access to flake inputs. Choose based on your portability requirements.
+
+## Choosing the Right Approach
+
+### Use `with-inputs/` directories when:
+- You want **portable modules/packages** that can be used outside nixDir
+- You need a mix of portable and non-portable files
+- You're sharing modules with projects that don't use nixDir
+- Portability is more important than convenience
+
+### Use `importWithInputs = true` option when:
+- You're committed to using nixDir for this project
+- You want simpler navigation (all files in one place)
+- You don't need files to be portable outside nixDir
+- Convenience is more important than portability
+
+**Tradeoff**: `importWithInputs = true` makes all your files non-portable (they require inputs as first parameter), but eliminates the cognitive load of maintaining parallel directory structures. If you're fully committed to nixDir, this is often a reasonable tradeoff.
+
+## The `importWithInputs` Option
+
+Enable in your flake configuration:
+
+```nix
+nixDir = {
+  enable = true;
+  root = ./.;
+  importWithInputs = true;  # All files receive inputs as first parameter
+};
+```
+
+With this option, all files in the regular directories receive `inputs`:
+
+```nix
+# nix/packages/my-package.nix (with importWithInputs = true)
+inputs: { pkgs, ... }:
+pkgs.writeShellScript "hello" ''
+  echo "Using ${inputs.some-input}"
+''
+```
+
+All files in `nix/packages/`, `nix/modules/`, etc. will have the same signature as if they
+were in `with-inputs/` directories. This simplifies your directory structure at the cost of
+making files non-portable.
+
+If you enable `importWithInputs = true` and still have `with-inputs/` directories, nixDir
+will warn you to consider consolidating (but both will continue to work).
+
+## The `with-inputs/` Directory Pattern
+
 The `with-inputs/` directory pattern allows you to write non-portable modules and packages
 that need access to flake inputs. This is useful when you need to reference dependencies
 from other flakes (or your own) in your modules or packages.

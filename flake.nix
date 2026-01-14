@@ -13,7 +13,6 @@
     nix2container.inputs.nixpkgs.follows = "nixpkgs";
 
     nixtest.url = "gitlab:technofab/nixtest?dir=lib";
-    nixtest.inputs.nixpkgs.follows = "nixpkgs";
 
     systems.url = "github:nix-systems/default";
     systems.flake = false;
@@ -73,11 +72,6 @@
               inherit pkgs lib inputs;
             };
 
-            # Tests for with-inputs directory pattern and conflict detection.
-            "with-inputs" = import ./tests/with-inputs-tests.nix {
-              inherit pkgs lib inputs;
-            };
-
             # Tests for devShells and devenvs import and conflict detection.
             "devshells" = import ./tests/devshells-tests.nix {
               inherit pkgs lib inputs;
@@ -92,6 +86,17 @@
             "devenv-modules" = import ./tests/devenv-modules-tests.nix {
               inherit pkgs lib inputs;
             };
+
+            # Tests for with-inputs directory pattern and conflict detection.
+            "with-inputs" = import ./tests/with-inputs-tests.nix {
+              inherit pkgs lib inputs;
+            };
+
+            # Tests for importWithInputs option and useInputsEverywhere parameter.
+            "import-with-inputs-option" = import ./tests/import-with-inputs-option-tests.nix {
+              inherit pkgs lib inputs;
+            };
+
           };
         };
     };

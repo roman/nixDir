@@ -19,8 +19,8 @@ predictably, and it "just works".
 
 - **Zero-boilerplate outputs**: Place files in `nix/packages/`, `nix/modules/`, etc. and
   they automatically become flake outputs
-- **Portable and non-portable patterns**: Use `with-inputs/` for modules that need flake
-  inputs, regular directories for portable resources
+- **Flexible input access**: Use `importWithInputs` option for simple all-in-one-place setup,
+  or `with-inputs/` directories when you need both portable and non-portable files
 - **Cross-platform support**: NixOS, nix-darwin, home-manager and devenv modules
 - **Development environments**: Automatic discovery of devShells and devenv configurations
 - **Platform-aware filtering**: Automatically filters packages based on `meta.platforms`,
@@ -67,6 +67,9 @@ features.
 Key options:
 - `enable` / `root` - Required
 - `dirName` - Config directory name (default: `"nix"`)
+- `importWithInputs` - All files receive flake inputs (default: `false`)
+  - When `true`: simpler structure, all files in one place, but non-portable
+  - When `false`: use `with-inputs/` directories for files needing inputs (more portable)
 - `installFlakeOverlay` - Make packages available in `pkgs` across all your outputs
 - `filterUnsupportedSystems` - Filter packages by `meta.platforms` (default: `true`)
   - Note: Automatically disabled when `generateAllPackage = true` to avoid infinite recursion
