@@ -6,6 +6,7 @@
   readDir ? builtins.readDir,
   pathExists ? builtins.pathExists,
   useInputsEverywhere ? false,
+  maxDepth ? 3,
 }:
 let
   # checkDirFileConflict checks if there are conflicting entries for a package
@@ -26,41 +27,101 @@ let
   # isNixFile verifies a filename ends with a ".nix" suffix
   isNixFile = name: ty: ty == "regular" && lib.hasSuffix ".nix" name;
 
-  # hasDefaultNixFile verifies a filename is called default.nix
-  hasDefaultNixFile = name: ty: ty == "regular" && name == "default.nix";
-
-  # subDirNames returns the names of the sub-directories contained in the given
-  # path
-  subDirNames =
-    path: builtins.attrNames (lib.filterAttrs (_name: ty: ty == "directory") (readDir path));
-
   # nixFiles returns all the ".nix" files contained in a directory.
   nixFiles = path: builtins.attrNames (lib.filterAttrs isNixFile (readDir path));
 
-  # nixSubDirNames traverses each subdirectory looking for a default.nix file.
+  # isHiddenDir checks if a directory name starts with "."
+  isHiddenDir = name: lib.hasPrefix "." name;
+
+  # discoverDirsWithFlakeOutputs recursively finds directories containing default.nix files.
+  # Works for all output types: packages, modules, configurations, devshells, etc.
+  #
+  # Arguments:
+  #   - outputRoot: the output directory being imported (e.g., "nix/packages/", "nix/modules/nixos/")
+  #   - currentPath: current directory being scanned (starts at outputRoot)
+  #   - pathFromRoot: accumulated path from outputRoot (e.g., "tools/cli" for packages/tools/cli/)
+  #   - depth: current nesting depth (0 at outputRoot)
+  #
+  # Returns list of { name, pathFromRoot } where:
+  #   - name: the leaf directory name (becomes the package/module name)
+  #   - pathFromRoot: path from outputRoot to the directory
+  #
+  # Leaf rule: directory with default.nix is a leaf (entry found, don't recurse deeper).
+  # Conflict check: errors if both foo/default.nix and foo.nix exist at same level.
+  discoverDirsWithFlakeOutputs =
+    {
+      outputRoot,
+      currentPath,
+      pathFromRoot ? "",
+      depth ? 0,
+    }:
+    let
+      contents = readDir currentPath;
+      dirs = lib.filterAttrs (_: type: type == "directory") contents;
+      dirNames = builtins.attrNames dirs;
+      visibleDirs = builtins.filter (n: !isHiddenDir n) dirNames;
+
+      processDir =
+        dirName:
+        let
+          dirPath = "${currentPath}/${dirName}";
+          newPathFromRoot = if pathFromRoot == "" then dirName else "${pathFromRoot}/${dirName}";
+          hasDefaultNix = pathExists "${dirPath}/default.nix";
+          # Check for conflict: foo/default.nix AND foo.nix at same level
+          checkedPath = checkDirFileConflict dirPath;
+        in
+        # Depth exceeded - don't discover or recurse
+        if depth >= maxDepth then
+          [ ]
+        # Leaf directory (has default.nix) - discovered, don't recurse deeper
+        # The checkedPath evaluation triggers the conflict check
+        else if hasDefaultNix then
+          builtins.seq checkedPath [
+            {
+              name = dirName;
+              pathFromRoot = newPathFromRoot;
+            }
+          ]
+        # Organizational directory - recurse
+        else
+          discoverDirsWithFlakeOutputs {
+            inherit outputRoot;
+            currentPath = dirPath;
+            pathFromRoot = newPathFromRoot;
+            depth = depth + 1;
+          };
+    in
+    builtins.concatLists (map processDir visibleDirs);
+
+  # nixSubDirNames traverses subdirectories recursively looking for default.nix files.
+  # Returns list of { name, pathFromRoot } records for directories containing default.nix.
   nixSubDirNames =
     path:
-    builtins.foldl' (
-      acc: subdir:
-      let
-        files = lib.attrNames (
-          lib.filterAttrs hasDefaultNixFile (readDir (checkDirFileConflict "${path}/${subdir}"))
-        );
-      in
-      if builtins.length files == 1 then acc ++ [ subdir ] else acc
-    ) [ ] (subDirNames path);
+    discoverDirsWithFlakeOutputs {
+      outputRoot = path;
+      currentPath = path;
+    };
 
   dirCallPackage =
     path:
-    builtins.foldl' (
-      acc: entryName:
-      let
-        # the key sometimes may be a directory name, other times it may be a
-        # .nix file name. Remove the .nix suffix to standarize.
-        key = lib.removeSuffix ".nix" entryName;
-      in
-      acc // { "${key}" = pkgs.callPackage "${path}/${entryName}" { }; }
-    ) { } (nixSubDirNames path ++ nixFiles path);
+    let
+      # From directories: list of { name, pathFromRoot }
+      fromDirs = builtins.listToAttrs (
+        map (entry: {
+          name = entry.name;
+          value = pkgs.callPackage "${path}/${entry.pathFromRoot}" { };
+        }) (nixSubDirNames path)
+      );
+
+      # From files: list of "foo.nix" strings
+      fromFiles = builtins.listToAttrs (
+        map (fileName: {
+          name = lib.removeSuffix ".nix" fileName;
+          value = pkgs.callPackage "${path}/${fileName}" { };
+        }) (nixFiles path)
+      );
+    in
+    fromDirs // fromFiles;
 
   # importPackages traverses each file/subdirectory in the given path looking for a
   # package configuration.
@@ -70,15 +131,22 @@ let
   # The imported files should be plain attribute sets or functions expecting module args.
   importDirWithoutInputs =
     path:
-    builtins.foldl' (
-      acc: entryName:
-      let
-        # the key sometimes may be a directory name, other times it may be a
-        # .nix file name. Remove the .nix suffix to standarize.
-        key = lib.removeSuffix ".nix" entryName;
-      in
-      acc // { "${key}" = importFile "${path}/${entryName}"; }
-    ) { } (nixSubDirNames path ++ nixFiles path);
+    let
+      fromDirs = builtins.listToAttrs (
+        map (entry: {
+          name = entry.name;
+          value = importFile "${path}/${entry.pathFromRoot}";
+        }) (nixSubDirNames path)
+      );
+
+      fromFiles = builtins.listToAttrs (
+        map (fileName: {
+          name = lib.removeSuffix ".nix" fileName;
+          value = importFile "${path}/${fileName}";
+        }) (nixFiles path)
+      );
+    in
+    fromDirs // fromFiles;
 
   # importDir imports files that expect standard module arguments.
   # For modules that need flake inputs, use with-inputs/ directory structure.
@@ -86,15 +154,22 @@ let
 
   importDirWithInputs =
     path:
-    builtins.foldl' (
-      acc: entryName:
-      let
-        # the key sometimes may be a directory name, other times it may be a
-        # .nix file name. Remove the .nix suffix to standarize.
-        key = lib.removeSuffix ".nix" entryName;
-      in
-      acc // { "${key}" = importFile "${path}/${entryName}" inputs; }
-    ) { } (nixSubDirNames path ++ nixFiles path);
+    let
+      fromDirs = builtins.listToAttrs (
+        map (entry: {
+          name = entry.name;
+          value = importFile "${path}/${entry.pathFromRoot}" inputs;
+        }) (nixSubDirNames path)
+      );
+
+      fromFiles = builtins.listToAttrs (
+        map (fileName: {
+          name = lib.removeSuffix ".nix" fileName;
+          value = importFile "${path}/${fileName}" inputs;
+        }) (nixFiles path)
+      );
+    in
+    fromDirs // fromFiles;
 
   _importDevenvs =
     innerImporter: path:
@@ -201,49 +276,64 @@ let
   # configuration. Files have signature: pkgs: mkShell { ... }
   importDevShells =
     path:
-    builtins.foldl' (
-      acc: entryName:
-      let
-        # the key sometimes may be a directory name, other times it may be a
-        # .nix file name. Remove the .nix suffix to standarize.
-        key = lib.removeSuffix ".nix" entryName;
-        # Import the file and call it with pkgs only (portable)
-        shell = importFile "${path}/${entryName}" pkgs;
-      in
-      acc // { "${key}" = shell; }
-    ) { } (nixSubDirNames path ++ nixFiles path);
+    let
+      fromDirs = builtins.listToAttrs (
+        map (entry: {
+          name = entry.name;
+          value = importFile "${path}/${entry.pathFromRoot}" pkgs;
+        }) (nixSubDirNames path)
+      );
+
+      fromFiles = builtins.listToAttrs (
+        map (fileName: {
+          name = lib.removeSuffix ".nix" fileName;
+          value = importFile "${path}/${fileName}" pkgs;
+        }) (nixFiles path)
+      );
+    in
+    fromDirs // fromFiles;
 
   # importDevShellsWithInputs traverses each file in the given path looking for a devShell
   # configuration. Files have signature: inputs: pkgs: mkShell { ... }
   importDevShellsWithInputs =
     path:
-    builtins.foldl' (
-      acc: entryName:
-      let
-        # the key sometimes may be a directory name, other times it may be a
-        # .nix file name. Remove the .nix suffix to standarize.
-        key = lib.removeSuffix ".nix" entryName;
-        # Import the file and call it with inputs and pkgs
-        shell = importFile "${path}/${entryName}" inputs pkgs;
-      in
-      acc // { "${key}" = shell; }
-    ) { } (nixSubDirNames path ++ nixFiles path);
+    let
+      fromDirs = builtins.listToAttrs (
+        map (entry: {
+          name = entry.name;
+          value = importFile "${path}/${entry.pathFromRoot}" inputs pkgs;
+        }) (nixSubDirNames path)
+      );
+
+      fromFiles = builtins.listToAttrs (
+        map (fileName: {
+          name = lib.removeSuffix ".nix" fileName;
+          value = importFile "${path}/${fileName}" inputs pkgs;
+        }) (nixFiles path)
+      );
+    in
+    fromDirs // fromFiles;
 
   # importPackagesWithInputs traverses each file/subdirectory in the given path looking for a
   # package configuration that needs flake inputs. Files have signature: flakeInputs: { pkgs args... }: derivation
   importPackagesWithInputs =
     path:
-    builtins.foldl' (
-      acc: entryName:
-      let
-        # the key sometimes may be a directory name, other times it may be a
-        # .nix file name. Remove the .nix suffix to standarize.
-        key = lib.removeSuffix ".nix" entryName;
-        # Import the file, call it with inputs first, then call the result with callPackage
-        package = pkgs.callPackage (importFile "${path}/${entryName}" inputs) { };
-      in
-      acc // { "${key}" = package; }
-    ) { } (nixSubDirNames path ++ nixFiles path);
+    let
+      fromDirs = builtins.listToAttrs (
+        map (entry: {
+          name = entry.name;
+          value = pkgs.callPackage (importFile "${path}/${entry.pathFromRoot}" inputs) { };
+        }) (nixSubDirNames path)
+      );
+
+      fromFiles = builtins.listToAttrs (
+        map (fileName: {
+          name = lib.removeSuffix ".nix" fileName;
+          value = pkgs.callPackage (importFile "${path}/${fileName}" inputs) { };
+        }) (nixFiles path)
+      );
+    in
+    fromDirs // fromFiles;
 in
 {
   # When useInputsEverywhere is true, all regular import functions use the WithInputs variants

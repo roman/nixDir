@@ -100,6 +100,11 @@
               inherit pkgs lib inputs;
             };
 
+            # Tests for recursive nested directory discovery.
+            "nested-discovery" = import ./tests/nested-discovery-tests.nix {
+              inherit pkgs lib inputs;
+            };
+
           };
         };
     };
