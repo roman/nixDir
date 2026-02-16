@@ -146,8 +146,7 @@ in
           configPath = "${portableConfigPath}/configurations/nixos";
           configs = importer.importNixOSConfigurations configPath;
         in
-        # Verify we got a configuration
-        (lib.traceValFn builtins.attrNames configs) ? test-host && configs.test-host ? config;
+        configs ? test-host && configs.test-host ? config;
     }
   ];
 }
