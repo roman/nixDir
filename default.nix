@@ -56,23 +56,27 @@ in
       generateFlakeOverlay = lib.mkOption {
         type = lib.types.bool;
         description = "build an overlay that contains all the packages in the flake";
-        default = true;
+        default = false;
       };
 
       installFlakeOverlay = lib.mkOption {
         type = lib.types.bool;
         description = ''
-          Install the flake overlay to the pkgs in flake-parts modules.
+                    Install the flake overlay to the pkgs in flake-parts modules.
 
-          WARNING: Enabling this option can cause infinite recursion if your
-          perSystem configuration references `self'.packages` or if package
-          definitions have complex dependencies on pkgs during evaluation.
-          Only enable if you specifically need your flake's packages available
-          as `pkgs.<package-name>` within your own flake configuration.
+                    WARNING: Enabling this option can cause infinite recursion if your
+                    perSystem configuration references `self'.packages` or if package
+                    definitions have complex dependencies on pkgs during evaluation.
+                    Only enable if you specifically need your flake's packages available
+                    as `pkgs.<package-name>` within your own flake configuration.
 
-          As an alternative, place packages that need access to flake inputs
-          in the `with-inputs/packages/` directory, which provides access to
-          inputs without requiring the flake overlay.
+                    As an alternative, you can:
+
+                    1. Place packages that need access to flake inputs in the `with-inputs/packages/`
+          	     directory, which provides access to inputs without requiring the flake overlay.
+
+                    2. Use the importWithInputs option to let all packages and modules have access
+          	     to the inputs from this flake.
         '';
         default = false;
       };
@@ -124,6 +128,23 @@ in
         default = false;
       };
 
+      strictDiscovery = lib.mkOption {
+        type = lib.types.bool;
+        description = ''
+          Error when directories containing default.nix files are ignored during discovery.
+
+          Directories can be ignored because:
+          - They exceed maxDepth (default 3 levels of nesting)
+          - A sibling .nix file blocks traversal (e.g., foo.nix blocks foo/)
+
+          When enabled, nixDir throws an error listing all ignored directories,
+          helping catch misconfigured directory structures early.
+
+          Set to false to silently ignore such directories.
+        '';
+        default = false;
+      };
+
     };
   };
 
@@ -169,6 +190,7 @@ in
           pkgs = null;
           inherit lib inputs;
           useInputsEverywhere = cfg.importWithInputs;
+          strictDiscovery = cfg.strictDiscovery;
         };
 
         addNixOSModules =
@@ -353,6 +375,7 @@ in
         importer = import ./src/importer.nix {
           inherit pkgs lib inputs;
           useInputsEverywhere = cfg.importWithInputs;
+          strictDiscovery = cfg.strictDiscovery;
         };
 
         addPackages =

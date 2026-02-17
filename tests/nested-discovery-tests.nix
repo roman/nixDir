@@ -7,6 +7,7 @@ let
   mkImporter =
     {
       maxDepth ? 3,
+      strictDiscovery ? false,
     }:
     import ../src/importer.nix {
       inherit
@@ -14,11 +15,16 @@ let
         lib
         inputs
         maxDepth
+        strictDiscovery
         ;
       useInputsEverywhere = false;
     };
 
+  # Default importer with strict mode OFF for backward-compatible tests
   importer = mkImporter { };
+
+  # Strict importer for strict mode tests
+  strictImporter = mkImporter { strictDiscovery = true; };
 
   flatPath = ./fixtures/nested-discovery/flat;
   depth1Path = ./fixtures/nested-discovery/depth-1;
@@ -183,6 +189,40 @@ in
           result = importer.importPackages fileBlockingPath;
         in
         result ? unblocked;
+    }
+
+    {
+      name = "strict-mode: throws error when depth exceeded";
+      type = "unit";
+      expected = false;
+      actual =
+        let
+          # Use importDir to avoid derivation complexity, triggers same discovery
+          result = builtins.tryEval (strictImporter.importDir depth3Path);
+        in
+        result.success;
+    }
+
+    {
+      name = "strict-mode: throws error when blocked by file";
+      type = "unit";
+      expected = false;
+      actual =
+        let
+          result = builtins.tryEval (strictImporter.importDir fileBlockingPath);
+        in
+        result.success;
+    }
+
+    {
+      name = "strict-mode: succeeds when no ignored packages";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = builtins.tryEval (strictImporter.importDir flatPath);
+        in
+        result.success;
     }
   ];
 }
