@@ -33,6 +33,10 @@ let
   # isHiddenDir checks if a directory name starts with "."
   isHiddenDir = name: lib.hasPrefix "." name;
 
+  # hasBlockingFile checks if a sibling .nix file blocks directory traversal.
+  # e.g., foo.nix blocks traversal into foo/ (but not foo/default.nix leaf discovery)
+  hasBlockingFile = path: dirName: pathExists "${path}/${dirName}.nix";
+
   # discoverDirsWithFlakeOutputs recursively finds directories containing default.nix files.
   # Works for all output types: packages, modules, configurations, devshells, etc.
   #
@@ -67,6 +71,7 @@ let
           dirPath = "${currentPath}/${dirName}";
           newPathFromRoot = if pathFromRoot == "" then dirName else "${pathFromRoot}/${dirName}";
           hasDefaultNix = pathExists "${dirPath}/default.nix";
+          isBlockedByFile = hasBlockingFile currentPath dirName;
           # Check for conflict: foo/default.nix AND foo.nix at same level
           checkedPath = checkDirFileConflict dirPath;
         in
@@ -82,6 +87,9 @@ let
               pathFromRoot = newPathFromRoot;
             }
           ]
+        # Blocked by sibling file (foo.nix blocks foo/) - skip silently
+        else if isBlockedByFile then
+          [ ]
         # Organizational directory - recurse
         else
           discoverDirsWithFlakeOutputs {
