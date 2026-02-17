@@ -26,6 +26,7 @@ let
   depth3Path = ./fixtures/nested-discovery/depth-3;
   hiddenPath = ./fixtures/nested-discovery/hidden;
   terminalPath = ./fixtures/nested-discovery/terminal;
+  fileBlockingPath = ./fixtures/nested-discovery/file-blocking;
 in
 {
   tests = [
@@ -149,6 +150,39 @@ in
           result = shallowImporter.importPackages depth2Path;
         in
         result ? nested-pkg;
+    }
+
+    {
+      name = "file-blocking: foo.nix blocks foo/ traversal";
+      type = "unit";
+      expected = false;
+      actual =
+        let
+          result = importer.importPackages fileBlockingPath;
+        in
+        result ? nested-pkg;
+    }
+
+    {
+      name = "file-blocking: discovers the blocking .nix file itself";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = importer.importPackages fileBlockingPath;
+        in
+        result ? blocked-dir;
+    }
+
+    {
+      name = "file-blocking: discovers unblocked directories";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = importer.importPackages fileBlockingPath;
+        in
+        result ? unblocked;
     }
   ];
 }
