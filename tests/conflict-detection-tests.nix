@@ -7,6 +7,7 @@ let
   importer = import ../src/importer.nix {
     inherit pkgs lib inputs;
     useInputsEverywhere = false;
+    strictDiscovery = true;
   };
 
   # Test fixture paths

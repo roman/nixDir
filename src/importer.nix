@@ -6,6 +6,7 @@
   readDir ? builtins.readDir,
   pathExists ? builtins.pathExists,
   useInputsEverywhere ? false,
+  strictDiscovery ? false,
   maxDepth ? 3,
 }:
 let
@@ -37,6 +38,66 @@ let
   # e.g., foo.nix blocks traversal into foo/ (but not foo/default.nix leaf discovery)
   hasBlockingFile = path: dirName: pathExists "${path}/${dirName}.nix";
 
+  # deriveDisplayPath extracts a relative display path from a Nix store path.
+  # Store paths follow: /nix/store/{32-char-hash}-{name}/{relative-path}
+  # Returns "./{relative-path}" for error messages.
+  deriveDisplayPath =
+    path:
+    let
+      pathStr = toString path;
+      afterStore = lib.removePrefix "/nix/store/" pathStr;
+      parts = lib.splitString "/" afterStore;
+      relativePath = lib.concatStringsSep "/" (lib.tail parts);
+    in
+    "./${relativePath}";
+
+  # formatIgnored formats a list of ignored items for error messages.
+  # Uses structured reason records with type field for pattern matching.
+  formatIgnored =
+    displayRoot: ignored:
+    lib.concatMapStringsSep "\n" (
+      item:
+      let
+        reasonStr =
+          if item.reason.type == "blocked" then
+            "blocked by ${displayRoot}/${item.reason.blockingFile}"
+          else if item.reason.type == "depth-exceeded" then
+            "depth exceeded (maxDepth=${toString item.reason.maxDepth})"
+          else
+            "unknown reason";
+      in
+      "  - ${displayRoot}/${item.path} (${reasonStr})"
+    ) ignored;
+
+  # validateDiscovery checks if any items were ignored and throws in strict mode.
+  # Derives display path from outputRoot store path.
+  validateDiscovery =
+    outputRoot: result:
+    let
+      displayRoot = deriveDisplayPath outputRoot;
+      reasonTypes = lib.unique (map (item: item.reason.type) result.ignored);
+      hasBlocked = builtins.elem "blocked" reasonTypes;
+      hasDepthExceeded = builtins.elem "depth-exceeded" reasonTypes;
+
+      recommendations = lib.concatStringsSep "\n" (
+        lib.optional hasBlocked "- Remove the blocking .nix file or rename the directory"
+        ++ lib.optional hasDepthExceeded "- Increase maxDepth if they are too deeply nested"
+        ++ [ "- Set nixDir.strictDiscovery = false to allow silent ignoring" ]
+      );
+    in
+    if strictDiscovery && result.ignored != [ ] then
+      throw ''
+        nixDir: strictDiscovery is enabled but some directories were ignored.
+
+        The following were not discovered in ${displayRoot}:
+        ${formatIgnored displayRoot result.ignored}
+
+        Either:
+        ${recommendations}
+      ''
+    else
+      result.discovered;
+
   # discoverDirsWithFlakeOutputs recursively finds directories containing default.nix files.
   # Works for all output types: packages, modules, configurations, devshells, etc.
   #
@@ -46,9 +107,9 @@ let
   #   - pathFromRoot: accumulated path from outputRoot (e.g., "tools/cli" for packages/tools/cli/)
   #   - depth: current nesting depth (0 at outputRoot)
   #
-  # Returns list of { name, pathFromRoot } where:
-  #   - name: the leaf directory name (becomes the package/module name)
-  #   - pathFromRoot: path from outputRoot to the directory
+  # Returns { discovered, ignored } where:
+  #   - discovered: list of { name, pathFromRoot }
+  #   - ignored: list of { path, reason } for items that were skipped
   #
   # Leaf rule: directory with default.nix is a leaf (entry found, don't recurse deeper).
   # Conflict check: errors if both foo/default.nix and foo.nix exist at same level.
@@ -75,21 +136,72 @@ let
           # Check for conflict: foo/default.nix AND foo.nix at same level
           checkedPath = checkDirFileConflict dirPath;
         in
-        # Depth exceeded - don't discover or recurse
+        # Depth exceeded - track as ignored, scan for nested default.nix to report
         if depth >= maxDepth then
-          [ ]
+          let
+            # Check if there are any default.nix files in this subtree that would be ignored
+            hasNestedPackages = pathExists "${dirPath}/default.nix";
+          in
+          {
+            discovered = [ ];
+            ignored =
+              if hasNestedPackages then
+                [
+                  {
+                    path = newPathFromRoot;
+                    reason = {
+                      type = "depth-exceeded";
+                      maxDepth = maxDepth;
+                    };
+                  }
+                ]
+              else
+                [ ];
+          }
+        # Blocked by sibling file (foo.nix blocks foo/) - track as ignored if has packages
+        else if isBlockedByFile then
+          let
+            # Scan the blocked directory for any default.nix that would be ignored
+            scanBlocked =
+              scanPath:
+              let
+                blockedContents = readDir scanPath;
+                blockedDirs = lib.filterAttrs (_: t: t == "directory") blockedContents;
+              in
+              if pathExists "${scanPath}" then
+                true
+              else
+                builtins.any (d: scanBlocked "${scanPath}/${d}") (builtins.attrNames blockedDirs);
+            hasBlockedPackages = scanBlocked dirPath;
+          in
+          {
+            discovered = [ ];
+            ignored =
+              if hasBlockedPackages then
+                [
+                  {
+                    path = newPathFromRoot;
+                    reason = {
+                      type = "blocked";
+                      blockingFile = "${newPathFromRoot}.nix";
+                    };
+                  }
+                ]
+              else
+                [ ];
+          }
         # Leaf directory (has default.nix) - discovered, don't recurse deeper
         # The checkedPath evaluation triggers the conflict check
         else if hasDefaultNix then
-          builtins.seq checkedPath [
-            {
-              name = dirName;
-              pathFromRoot = newPathFromRoot;
-            }
-          ]
-        # Blocked by sibling file (foo.nix blocks foo/) - skip silently
-        else if isBlockedByFile then
-          [ ]
+          builtins.seq checkedPath {
+            discovered = [
+              {
+                name = dirName;
+                pathFromRoot = newPathFromRoot;
+              }
+            ];
+            ignored = [ ];
+          }
         # Organizational directory - recurse
         else
           discoverDirsWithFlakeOutputs {
@@ -98,17 +210,23 @@ let
             pathFromRoot = newPathFromRoot;
             depth = depth + 1;
           };
+
+      results = map processDir visibleDirs;
     in
-    builtins.concatLists (map processDir visibleDirs);
+    {
+      discovered = builtins.concatLists (map (r: r.discovered) results);
+      ignored = builtins.concatLists (map (r: r.ignored) results);
+    };
 
   # nixSubDirNames traverses subdirectories recursively looking for default.nix files.
   # Returns list of { name, pathFromRoot } records for directories containing default.nix.
+  # In strict mode, throws if any directories were ignored.
   nixSubDirNames =
     path:
-    discoverDirsWithFlakeOutputs {
+    validateDiscovery path (discoverDirsWithFlakeOutputs {
       outputRoot = path;
       currentPath = path;
-    };
+    });
 
   dirCallPackage =
     path:

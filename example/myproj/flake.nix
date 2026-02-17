@@ -3,7 +3,7 @@
 
   inputs = {
     nixDir = {
-      url = "git+file:./../../";
+      url = "path:./../../";
     };
     # use the same dependencies as the root flake
     nixpkgs.follows = "nixDir/nixpkgs";
@@ -68,6 +68,10 @@
         installOverlays = [
           inputs.devenv.overlays.default
         ];
+
+        # (Optional) have validations that ensure packages get discovered as expected
+        # (e.g. no ambiguity). Default is false.
+        strictDiscovery = true;
 
         # (Optional) When enabled, all files in the regular directory tree receive 'inputs'
         # as their first parameter (similar to the with-inputs pattern).
