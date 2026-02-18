@@ -11,6 +11,9 @@
   maxDepth ? 3,
 }:
 let
+  constants = import ./constants.nix;
+  inherit (constants) strategies discoveryErrors;
+
   # checkDirFileConflict checks if there are conflicting entries for a package
   # definition.
   checkDirFileConflict =
@@ -18,9 +21,9 @@ let
     if pathExists "${entry}/default.nix" && pathExists "${entry}.nix" then
       throw ''
         nixDir is confused, it found two conflicting entries.
-              
+
         One is a directory (${entry}/default.nix), and the other a file (${entry}.nix).
-                      
+
         Please remove one of the two.
       ''
     else
@@ -60,9 +63,9 @@ let
       item:
       let
         reasonStr =
-          if item.reason.type == "blocked" then
+          if item.reason.type == discoveryErrors.blocked then
             "blocked by ${displayRoot}/${item.reason.blockingFile}"
-          else if item.reason.type == "depth-exceeded" then
+          else if item.reason.type == discoveryErrors.depthExceeded then
             "depth exceeded (maxDepth=${toString item.reason.maxDepth})"
           else
             "unknown reason";
@@ -77,8 +80,8 @@ let
     let
       displayRoot = deriveDisplayPath outputRoot;
       reasonTypes = lib.unique (map (item: item.reason.type) result.ignored);
-      hasBlocked = builtins.elem "blocked" reasonTypes;
-      hasDepthExceeded = builtins.elem "depth-exceeded" reasonTypes;
+      hasBlocked = builtins.elem discoveryErrors.blocked reasonTypes;
+      hasDepthExceeded = builtins.elem discoveryErrors.depthExceeded reasonTypes;
 
       recommendations = lib.concatStringsSep "\n" (
         lib.optional hasBlocked "- Remove the blocking .nix file or rename the directory"
@@ -155,8 +158,8 @@ let
                   {
                     path = newPathFromRoot;
                     reason = {
-                      type = "depth-exceeded";
-                      maxDepth = maxDepth;
+                      type = discoveryErrors.depthExceeded;
+                      inherit maxDepth;
                     };
                   }
                 ]
@@ -173,7 +176,7 @@ let
                 blockedContents = readDir scanPath;
                 blockedDirs = lib.filterAttrs (_: t: t == "directory") blockedContents;
               in
-              if pathExists "${scanPath}" then
+              if pathExists "${scanPath}/default.nix" then
                 true
               else
                 builtins.any (d: scanBlocked "${scanPath}/${d}") (builtins.attrNames blockedDirs);
@@ -187,7 +190,7 @@ let
                   {
                     path = newPathFromRoot;
                     reason = {
-                      type = "blocked";
+                      type = discoveryErrors.blocked;
                       blockingFile = "${newPathFromRoot}.nix";
                     };
                   }
@@ -233,75 +236,77 @@ let
       currentPath = path;
     });
 
-  dirCallPackage =
-    path:
-    let
-      # From directories: list of { name, pathFromRoot }
-      fromDirs = builtins.listToAttrs (
-        map (entry: {
-          name = entry.name;
-          value = pkgs.callPackage "${path}/${entry.pathFromRoot}" { };
-        }) (nixSubDirNames path)
-      );
-
-      # From files: list of "foo.nix" strings
-      fromFiles = builtins.listToAttrs (
-        map (fileName: {
-          name = lib.removeSuffix ".nix" fileName;
-          value = pkgs.callPackage "${path}/${fileName}" { };
-        }) (nixFiles path)
-      );
-    in
-    fromDirs // fromFiles;
-
-  # importPackages traverses each file/subdirectory in the given path looking for a
-  # package configuration.
-  importPackages = dirCallPackage;
-
-  # importDirWithoutInputs imports files from a directory without passing inputs.
-  # The imported files should be plain attribute sets or functions expecting module args.
-  importDirWithoutInputs =
-    path:
+  # mkImportDir creates an import function that discovers and imports files from a directory.
+  # This is the core building block - takes a single-file import function and applies it
+  # to all discovered files/directories.
+  mkImportDir =
+    importFn: path:
     let
       fromDirs = builtins.listToAttrs (
         map (entry: {
           name = entry.name;
-          value = importFile "${path}/${entry.pathFromRoot}";
+          value = importFn "${path}/${entry.pathFromRoot}";
         }) (nixSubDirNames path)
       );
 
       fromFiles = builtins.listToAttrs (
         map (fileName: {
           name = lib.removeSuffix ".nix" fileName;
-          value = importFile "${path}/${fileName}";
+          value = importFn "${path}/${fileName}";
         }) (nixFiles path)
       );
     in
     fromDirs // fromFiles;
 
-  # importDir imports files that expect standard module arguments.
-  # For modules that need flake inputs, use with-inputs/ directory structure.
-  importDir = importDirWithoutInputs;
-
-  importDirWithInputs =
-    path:
+  # importByStrategy creates an import function based on strategy and withInputs flag.
+  # This single function replaces 18 import* functions from the old importer.
+  importByStrategy =
+    { strategy, withInputs }:
     let
-      fromDirs = builtins.listToAttrs (
-        map (entry: {
-          name = entry.name;
-          value = importFile "${path}/${entry.pathFromRoot}" inputs;
-        }) (nixSubDirNames path)
-      );
-
-      fromFiles = builtins.listToAttrs (
-        map (fileName: {
-          name = lib.removeSuffix ".nix" fileName;
-          value = importFile "${path}/${fileName}" inputs;
-        }) (nixFiles path)
-      );
+      importFn =
+        if strategy == strategies.callPackage then
+          if withInputs then p: pkgs.callPackage (importFile p inputs) { } else p: pkgs.callPackage p { }
+        else if strategy == strategies.passPkgs then
+          if withInputs then p: importFile p inputs pkgs else p: importFile p pkgs
+        else if strategy == strategies.plain then
+          if withInputs then p: importFile p inputs else importFile
+        else
+          throw "nixDir: unknown import strategy '${strategy}'";
     in
-    fromDirs // fromFiles;
+    mkImportDir importFn;
 
+  # Backward-compatible import functions using the new generic approach
+  dirCallPackage = importByStrategy {
+    strategy = strategies.callPackage;
+    withInputs = false;
+  };
+
+  importDirWithoutInputs = importByStrategy {
+    strategy = strategies.plain;
+    withInputs = false;
+  };
+
+  importDirWithInputs = importByStrategy {
+    strategy = strategies.plain;
+    withInputs = true;
+  };
+
+  importDevShells = importByStrategy {
+    strategy = strategies.passPkgs;
+    withInputs = false;
+  };
+
+  importDevShellsWithInputs = importByStrategy {
+    strategy = strategies.passPkgs;
+    withInputs = true;
+  };
+
+  importPackagesWithInputs = importByStrategy {
+    strategy = strategies.callPackage;
+    withInputs = true;
+  };
+
+  # Wrapper for devenvs that validates devenv input exists
   _importDevenvs =
     innerImporter: path:
     lib.mapAttrs (
@@ -323,41 +328,20 @@ let
         attrs
     ) (innerImporter path);
 
-  # importDevenvs traverses each file in the given path looking for a devenv configuration.
-  importDevenvs = _importDevenvs importDir;
-
-  # importDevenvsWithInputs for with-inputs/ directory.
+  importDevenvs = _importDevenvs importDirWithoutInputs;
   importDevenvsWithInputs = _importDevenvs importDirWithInputs;
 
-  # importNixOSModules traverses each file in the given path looking for a NixOS
-  # configuration.
-  importNixOSModules = importDir;
-
-  # importNixOSModulesWithInputs for with-inputs/ directory.
-  importNixOSModulesWithInputs = importDirWithInputs;
-
+  # Wrapper for NixOS configurations
   _importNixOSConfigurations =
     innerImporter: path:
     lib.mapAttrs (
       _name: attrs: inputs.nixpkgs.lib.nixosSystem (attrs // { specialArgs = { inherit inputs; }; })
     ) (innerImporter path);
 
-  # importNixOSConfigurations traverses each file in the given path looking for a NixOS
-  # configuration. Regular (portable) version - files return { system, modules, ... }
-  importNixOSConfigurations = _importNixOSConfigurations importDir;
-
-  # importNixOSConfigurationsWithInputs for with-inputs/ directory.
-  # Files have signature: inputs: { system, modules, ... }
+  importNixOSConfigurations = _importNixOSConfigurations importDirWithoutInputs;
   importNixOSConfigurationsWithInputs = _importNixOSConfigurations importDirWithInputs;
 
-  # importDarwinModules traverses each file in the given path looking for a nix-darwin
-  # configuration.
-  importDarwinModules = importDir;
-
-  # importDarwinModulesWithInputs for with-inputs/ directory.
-  # Files have signature: inputs: { system, modules, ... }
-  importDarwinModulesWithInputs = importDirWithInputs;
-
+  # Wrapper for Darwin configurations with input validation
   _importDarwinConfigurations =
     innerImporter: path:
     lib.mapAttrs (
@@ -379,94 +363,24 @@ let
         inputs.nix-darwin.lib.darwinSystem (attrs // { specialArgs = { inherit inputs; }; })
     ) (innerImporter path);
 
-  # importDarwinConfigurations traverses each file in the given path looking for a
-  # nix-darwin configuration. Regular (portable) version - files return { system, modules, ... }
-  importDarwinConfigurations = _importDarwinConfigurations importDir;
-
-  # importDarwinConfigurationsWithInputs for with-inputs/ directory.
-  # Files have signature: inputs: { system, modules, ... }
+  importDarwinConfigurations = _importDarwinConfigurations importDirWithoutInputs;
   importDarwinConfigurationsWithInputs = _importDarwinConfigurations importDirWithInputs;
 
-  # importHomeManagerModules traverses each file in the given path looking for a
-  # home-manager configuration.
-  importHomeManagerModules = importDir;
-
-  # importHomeManagerModulesWithInputs for with-inputs/ directory.
-  # Files have signature: inputs: { system, modules, ... }
+  # Aliases for type-specific imports (all use the same underlying function)
+  importPackages = dirCallPackage;
+  importNixOSModules = importDirWithoutInputs;
+  importNixOSModulesWithInputs = importDirWithInputs;
+  importDarwinModules = importDirWithoutInputs;
+  importDarwinModulesWithInputs = importDirWithInputs;
+  importHomeManagerModules = importDirWithoutInputs;
   importHomeManagerModulesWithInputs = importDirWithInputs;
-
-  # importDevenvModules traverses each file in the given path looking for a
-  # devenv configuration.
-  importDevenvModules = importDir;
-
-  # importDevenvModulesWithInputs for with-inputs/ directory.
-  # Files have signature: flakeInputs: { pkgs, lib, config, ... }
+  importDevenvModules = importDirWithoutInputs;
   importDevenvModulesWithInputs = importDirWithInputs;
-
-  # importDevShells traverses each file in the given path looking for a devShell
-  # configuration. Files have signature: pkgs: mkShell { ... }
-  importDevShells =
-    path:
-    let
-      fromDirs = builtins.listToAttrs (
-        map (entry: {
-          name = entry.name;
-          value = importFile "${path}/${entry.pathFromRoot}" pkgs;
-        }) (nixSubDirNames path)
-      );
-
-      fromFiles = builtins.listToAttrs (
-        map (fileName: {
-          name = lib.removeSuffix ".nix" fileName;
-          value = importFile "${path}/${fileName}" pkgs;
-        }) (nixFiles path)
-      );
-    in
-    fromDirs // fromFiles;
-
-  # importDevShellsWithInputs traverses each file in the given path looking for a devShell
-  # configuration. Files have signature: inputs: pkgs: mkShell { ... }
-  importDevShellsWithInputs =
-    path:
-    let
-      fromDirs = builtins.listToAttrs (
-        map (entry: {
-          name = entry.name;
-          value = importFile "${path}/${entry.pathFromRoot}" inputs pkgs;
-        }) (nixSubDirNames path)
-      );
-
-      fromFiles = builtins.listToAttrs (
-        map (fileName: {
-          name = lib.removeSuffix ".nix" fileName;
-          value = importFile "${path}/${fileName}" inputs pkgs;
-        }) (nixFiles path)
-      );
-    in
-    fromDirs // fromFiles;
-
-  # importPackagesWithInputs traverses each file/subdirectory in the given path looking for a
-  # package configuration that needs flake inputs. Files have signature: flakeInputs: { pkgs args... }: derivation
-  importPackagesWithInputs =
-    path:
-    let
-      fromDirs = builtins.listToAttrs (
-        map (entry: {
-          name = entry.name;
-          value = pkgs.callPackage (importFile "${path}/${entry.pathFromRoot}" inputs) { };
-        }) (nixSubDirNames path)
-      );
-
-      fromFiles = builtins.listToAttrs (
-        map (fileName: {
-          name = lib.removeSuffix ".nix" fileName;
-          value = pkgs.callPackage (importFile "${path}/${fileName}" inputs) { };
-        }) (nixFiles path)
-      );
-    in
-    fromDirs // fromFiles;
 in
 {
+  # Export the new generic functions
+  inherit mkImportDir importByStrategy;
+
   # When importWithInputs is true, all regular import functions use the WithInputs variants
   importPackages = if importWithInputs then importPackagesWithInputs else importPackages;
   importNixOSModules = if importWithInputs then importNixOSModulesWithInputs else importNixOSModules;
