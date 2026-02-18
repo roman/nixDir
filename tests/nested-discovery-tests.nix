@@ -19,7 +19,7 @@ let
         strictDiscovery
         followSymlinks
         ;
-      useInputsEverywhere = false;
+      importWithInputs = false;
     };
 
   # Default importer with strict mode OFF for backward-compatible tests

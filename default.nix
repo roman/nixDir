@@ -203,7 +203,7 @@ in
         importer = import ./src/importer.nix {
           pkgs = null;
           inherit lib inputs;
-          useInputsEverywhere = cfg.importWithInputs;
+          importWithInputs = cfg.importWithInputs;
           strictDiscovery = cfg.strictDiscovery;
           followSymlinks = cfg.followSymlinks;
         };
@@ -389,7 +389,7 @@ in
       let
         importer = import ./src/importer.nix {
           inherit pkgs lib inputs;
-          useInputsEverywhere = cfg.importWithInputs;
+          importWithInputs = cfg.importWithInputs;
           strictDiscovery = cfg.strictDiscovery;
           followSymlinks = cfg.followSymlinks;
         };
