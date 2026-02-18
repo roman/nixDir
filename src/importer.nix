@@ -5,7 +5,7 @@
   importFile ? import,
   readDir ? builtins.readDir,
   pathExists ? builtins.pathExists,
-  useInputsEverywhere ? false,
+  importWithInputs ? false,
   strictDiscovery ? false,
   followSymlinks ? false,
   maxDepth ? 3,
@@ -467,23 +467,22 @@ let
     fromDirs // fromFiles;
 in
 {
-  # When useInputsEverywhere is true, all regular import functions use the WithInputs variants
-  importPackages = if useInputsEverywhere then importPackagesWithInputs else importPackages;
-  importNixOSModules =
-    if useInputsEverywhere then importNixOSModulesWithInputs else importNixOSModules;
-  importDevenvs = if useInputsEverywhere then importDevenvsWithInputs else importDevenvs;
+  # When importWithInputs is true, all regular import functions use the WithInputs variants
+  importPackages = if importWithInputs then importPackagesWithInputs else importPackages;
+  importNixOSModules = if importWithInputs then importNixOSModulesWithInputs else importNixOSModules;
+  importDevenvs = if importWithInputs then importDevenvsWithInputs else importDevenvs;
   importNixOSConfigurations =
-    if useInputsEverywhere then importNixOSConfigurationsWithInputs else importNixOSConfigurations;
+    if importWithInputs then importNixOSConfigurationsWithInputs else importNixOSConfigurations;
   importDarwinModules =
-    if useInputsEverywhere then importDarwinModulesWithInputs else importDarwinModules;
+    if importWithInputs then importDarwinModulesWithInputs else importDarwinModules;
   importDarwinConfigurations =
-    if useInputsEverywhere then importDarwinConfigurationsWithInputs else importDarwinConfigurations;
+    if importWithInputs then importDarwinConfigurationsWithInputs else importDarwinConfigurations;
   importHomeManagerModules =
-    if useInputsEverywhere then importHomeManagerModulesWithInputs else importHomeManagerModules;
+    if importWithInputs then importHomeManagerModulesWithInputs else importHomeManagerModules;
   importDevenvModules =
-    if useInputsEverywhere then importDevenvModulesWithInputs else importDevenvModules;
-  importDevShells = if useInputsEverywhere then importDevShellsWithInputs else importDevShells;
-  importDir = if useInputsEverywhere then importDirWithInputs else importDirWithoutInputs;
+    if importWithInputs then importDevenvModulesWithInputs else importDevenvModules;
+  importDevShells = if importWithInputs then importDevShellsWithInputs else importDevShells;
+  importDir = if importWithInputs then importDirWithInputs else importDirWithoutInputs;
 
   # Keep WithInputs variants available for with-inputs/ directory support
   inherit

@@ -4,16 +4,16 @@
   inputs,
 }:
 let
-  # Test importer with useInputsEverywhere enabled
+  # Test importer with importWithInputs enabled
   importerWithInputs = import ../src/importer.nix {
     inherit pkgs lib inputs;
-    useInputsEverywhere = true;
+    importWithInputs = true;
   };
 
-  # Test importer without useInputsEverywhere (backward compatibility)
+  # Test importer without importWithInputs (backward compatibility)
   importerWithoutInputs = import ../src/importer.nix {
     inherit pkgs lib inputs;
-    useInputsEverywhere = false;
+    importWithInputs = false;
   };
 
   # Test fixture paths
@@ -54,7 +54,7 @@ in
     }
 
     {
-      name = "useInputsEverywhere=true makes importPackages pass inputs to files";
+      name = "importWithInputs=true makes importPackages pass inputs to files";
       type = "unit";
       expected = "test-package-with-inputs";
       actual =
@@ -68,7 +68,7 @@ in
     }
 
     {
-      name = "useInputsEverywhere=false maintains backward compatibility";
+      name = "importWithInputs=false maintains backward compatibility";
       type = "unit";
       expected = true;
       actual =
@@ -97,7 +97,7 @@ in
     }
 
     {
-      name = "importNixOSModules works with useInputsEverywhere=true";
+      name = "importNixOSModules works with importWithInputs=true";
       type = "unit";
       expected = true;
       actual =
