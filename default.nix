@@ -145,6 +145,20 @@ in
         default = false;
       };
 
+      followSymlinks = lib.mkOption {
+        type = lib.types.bool;
+        description = ''
+          Follow symbolic links when discovering directories.
+
+          When disabled (default), symlinks are skipped during directory traversal.
+          When enabled, symlinks pointing to directories are followed and their
+          contents are discovered as if they were regular directories.
+
+          Note: Symlinks pointing to files are always skipped regardless of this setting.
+        '';
+        default = false;
+      };
+
     };
   };
 
@@ -191,6 +205,7 @@ in
           inherit lib inputs;
           useInputsEverywhere = cfg.importWithInputs;
           strictDiscovery = cfg.strictDiscovery;
+          followSymlinks = cfg.followSymlinks;
         };
 
         addNixOSModules =
@@ -376,6 +391,7 @@ in
           inherit pkgs lib inputs;
           useInputsEverywhere = cfg.importWithInputs;
           strictDiscovery = cfg.strictDiscovery;
+          followSymlinks = cfg.followSymlinks;
         };
 
         addPackages =

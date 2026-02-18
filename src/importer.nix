@@ -7,6 +7,7 @@
   pathExists ? builtins.pathExists,
   useInputsEverywhere ? false,
   strictDiscovery ? false,
+  followSymlinks ? false,
   maxDepth ? 3,
 }:
 let
@@ -122,7 +123,11 @@ let
     }:
     let
       contents = readDir currentPath;
-      dirs = lib.filterAttrs (_: type: type == "directory") contents;
+      isDirectoryEntry =
+        name: type:
+        type == "directory"
+        || (followSymlinks && type == "symlink" && pathExists "${currentPath}/${name}/.");
+      dirs = lib.filterAttrs isDirectoryEntry contents;
       dirNames = builtins.attrNames dirs;
       visibleDirs = builtins.filter (n: !isHiddenDir n) dirNames;
 
