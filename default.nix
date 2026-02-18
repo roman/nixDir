@@ -10,7 +10,7 @@ let
   path = "${cfg.root}/${cfg.dirName}";
 
   constants = import ./src/constants.nix;
-  inherit (constants) dirNames;
+  inherit (constants) dirNames flakeLevelKinds;
 
   flakeLib = import ./lib.nix {
     inherit lib;
@@ -209,180 +209,47 @@ in
           followSymlinks = cfg.followSymlinks;
         };
 
-        addNixOSModules =
-          acc:
+        outputKinds = import ./src/output-kinds.nix { flakeInputs = inputs; };
+
+        # Generic function to add any flake-level output kind
+        addFlakeLevelOutput =
+          kindName: acc:
           let
-            nixosModulesPath = "${path}/modules/nixos";
-            withInputsNixosModulesPath = "${path}/with-inputs/modules/nixos";
+            kind = outputKinds.${kindName};
+            regularPath = "${path}/${kind.dirPath}";
+            withInputsPath = "${path}/${dirNames.withInputs}/${kind.dirPath}";
 
-            regularModules =
-              if builtins.pathExists nixosModulesPath then importer.importNixOSModules nixosModulesPath else { };
+            # Import using strategy, apply wrapper if present
+            importKind =
+              p: withInputs:
+              let
+                raw = importer.importByStrategy {
+                  inherit (kind) strategy;
+                  inherit withInputs;
+                } p;
+              in
+              if kind.wrapper != null then lib.mapAttrs kind.wrapper raw else raw;
 
-            withInputsModules =
-              if builtins.pathExists withInputsNixosModulesPath then
-                importer.importDirWithInputs withInputsNixosModulesPath
-              else
-                { };
+            regular = if builtins.pathExists regularPath then importKind regularPath false else { };
 
-            allModules = checkConflicts "modules/nixos" regularModules withInputsModules;
+            withInputsResult =
+              if builtins.pathExists withInputsPath then importKind withInputsPath true else { };
+
+            all = checkConflicts kind.dirPath regular withInputsResult;
           in
           lib.mkMerge [
             acc
-            (lib.mkIf (builtins.length (builtins.attrNames allModules) > 0) { nixosModules = allModules; })
-          ];
-
-        addNixOSConfigurations =
-          acc:
-          let
-            nixosConfigurationsPath = "${path}/configurations/nixos";
-            withInputsNixosConfigurationsPath = "${path}/with-inputs/configurations/nixos";
-
-            regularConfigs =
-              if builtins.pathExists nixosConfigurationsPath then
-                importer.importNixOSConfigurations nixosConfigurationsPath
-              else
-                { };
-
-            withInputsConfigs =
-              if builtins.pathExists withInputsNixosConfigurationsPath then
-                importer.importNixOSConfigurationsWithInputs withInputsNixosConfigurationsPath
-              else
-                { };
-
-            allConfigs = checkConflicts "configurations/nixos" regularConfigs withInputsConfigs;
-          in
-          lib.mkMerge [
-            acc
-            (lib.mkIf (builtins.length (builtins.attrNames allConfigs) > 0) {
-              nixosConfigurations = allConfigs;
-            })
-          ];
-
-        addNixDarwinModules =
-          acc:
-          let
-            nixDarwinModulesPath = "${path}/modules/darwin";
-            withInputsDarwinModulesPath = "${path}/with-inputs/modules/darwin";
-
-            regularModules =
-              if builtins.pathExists nixDarwinModulesPath then
-                importer.importDarwinModules nixDarwinModulesPath
-              else
-                { };
-
-            withInputsModules =
-              if builtins.pathExists withInputsDarwinModulesPath then
-                importer.importDarwinModulesWithInputs withInputsDarwinModulesPath
-              else
-                { };
-
-            allModules = checkConflicts "modules/darwin" regularModules withInputsModules;
-          in
-          lib.mkMerge [
-            acc
-            (lib.mkIf (builtins.length (builtins.attrNames allModules) > 0) { darwinModules = allModules; })
-          ];
-
-        addNixDarwinConfigurations =
-          acc:
-          let
-            nixDarwinConfigurationsPath = "${path}/configurations/darwin";
-            withInputsDarwinConfigurationsPath = "${path}/with-inputs/configurations/darwin";
-
-            regularConfigs =
-              if builtins.pathExists nixDarwinConfigurationsPath then
-                importer.importDarwinConfigurations nixDarwinConfigurationsPath
-              else
-                { };
-
-            withInputsConfigs =
-              if builtins.pathExists withInputsDarwinConfigurationsPath then
-                importer.importDarwinConfigurationsWithInputs withInputsDarwinConfigurationsPath
-              else
-                { };
-
-            allConfigs = checkConflicts "configurations/darwin" regularConfigs withInputsConfigs;
-          in
-          lib.mkMerge [
-            acc
-            (lib.mkIf (builtins.length (builtins.attrNames allConfigs) > 0) {
-              darwinConfigurations = allConfigs;
-            })
-          ];
-
-        addHomeManagerModules =
-          acc:
-          let
-            homeManagerModulesPath = "${path}/modules/home-manager";
-            withInputsHomeManagerModulesPath = "${path}/with-inputs/modules/home-manager";
-
-            regularModules =
-              if builtins.pathExists homeManagerModulesPath then
-                importer.importHomeManagerModules homeManagerModulesPath
-              else
-                { };
-
-            withInputsModules =
-              if builtins.pathExists withInputsHomeManagerModulesPath then
-                importer.importHomeManagerModulesWithInputs withInputsHomeManagerModulesPath
-              else
-                { };
-
-            homeManagerModules = checkConflicts "modules/home-manager" regularModules withInputsModules;
-
-          in
-          lib.mkMerge [
-            acc
-            (lib.mkIf (builtins.length (builtins.attrNames homeManagerModules) > 0) {
-              inherit homeManagerModules;
-            })
-          ];
-
-        addDevenvModules =
-          acc:
-          let
-            devenvModulesPath = "${path}/modules/devenv";
-            withInputsDevenvModulesPath = "${path}/with-inputs/modules/devenv";
-
-            regularModules =
-              if builtins.pathExists devenvModulesPath then
-                importer.importDevenvModules devenvModulesPath
-              else
-                { };
-
-            withInputsModules =
-              if builtins.pathExists withInputsDevenvModulesPath then
-                importer.importDevenvModulesWithInputs withInputsDevenvModulesPath
-              else
-                { };
-
-            devenvModules = checkConflicts "modules/devenv" regularModules withInputsModules;
-          in
-          lib.mkMerge [
-            acc
-            (lib.mkIf (builtins.length (builtins.attrNames devenvModules) > 0) { inherit devenvModules; })
-          ];
-
-        addFlakeOverlay =
-          acc:
-          lib.mkMerge [
-            acc
-            (lib.mkIf (cfg.generateFlakeOverlay || cfg.installFlakeOverlay) {
-              overlays = {
-                flake = _final: prev: inputs.self.packages.${prev.stdenv.hostPlatform.system};
-              };
-            })
+            (lib.mkIf (all != { }) { ${kind.flakeAttr} = all; })
           ];
 
       in
-      builtins.foldl' (acc: f: f acc) { } [
-        addFlakeOverlay
-        addNixOSModules
-        addNixOSConfigurations
-        addNixDarwinModules
-        addNixDarwinConfigurations
-        addHomeManagerModules
-        addDevenvModules
+      lib.mkMerge [
+        # Flake overlay (special case)
+        (lib.mkIf (cfg.generateFlakeOverlay || cfg.installFlakeOverlay) {
+          overlays.flake = _final: prev: inputs.self.packages.${prev.stdenv.hostPlatform.system};
+        })
+        # All flake-level outputs via data-driven approach
+        (builtins.foldl' (acc: kindName: addFlakeLevelOutput kindName acc) { } flakeLevelKinds)
       ];
 
     perSystem =
