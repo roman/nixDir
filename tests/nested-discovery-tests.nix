@@ -8,6 +8,7 @@ let
     {
       maxDepth ? 3,
       strictDiscovery ? false,
+      followSymlinks ? false,
     }:
     import ../src/importer.nix {
       inherit
@@ -16,6 +17,7 @@ let
         inputs
         maxDepth
         strictDiscovery
+        followSymlinks
         ;
       useInputsEverywhere = false;
     };
@@ -26,6 +28,9 @@ let
   # Strict importer for strict mode tests
   strictImporter = mkImporter { strictDiscovery = true; };
 
+  # Symlink importer for followSymlinks tests
+  symlinkImporter = mkImporter { followSymlinks = true; };
+
   flatPath = ./fixtures/nested-discovery/flat;
   depth1Path = ./fixtures/nested-discovery/depth-1;
   depth2Path = ./fixtures/nested-discovery/depth-2;
@@ -33,6 +38,7 @@ let
   hiddenPath = ./fixtures/nested-discovery/hidden;
   terminalPath = ./fixtures/nested-discovery/terminal;
   fileBlockingPath = ./fixtures/nested-discovery/file-blocking;
+  symlinksPath = ./fixtures/nested-discovery/symlinks;
 in
 {
   tests = [
@@ -223,6 +229,50 @@ in
           result = builtins.tryEval (strictImporter.importDir flatPath);
         in
         result.success;
+    }
+
+    {
+      name = "symlinks: discovers real directory";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = importer.importPackages symlinksPath;
+        in
+        result ? real-pkg;
+    }
+
+    {
+      name = "symlinks: skips symlinks by default";
+      type = "unit";
+      expected = false;
+      actual =
+        let
+          result = importer.importPackages symlinksPath;
+        in
+        result ? linked-pkg;
+    }
+
+    {
+      name = "symlinks: follows symlinks when enabled";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = symlinkImporter.importPackages symlinksPath;
+        in
+        result ? linked-pkg;
+    }
+
+    {
+      name = "symlinks: still discovers real directory when following symlinks";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = symlinkImporter.importPackages symlinksPath;
+        in
+        result ? real-pkg;
     }
   ];
 }
