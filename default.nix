@@ -9,6 +9,9 @@ let
   cfg = config.nixDir;
   path = "${cfg.root}/${cfg.dirName}";
 
+  constants = import ./src/constants.nix;
+  inherit (constants) dirNames;
+
   flakeLib = import ./lib.nix {
     inherit lib;
     inherit (cfg) dirName;
@@ -165,40 +168,38 @@ in
   config = lib.mkIf cfg.enable {
     flake =
       let
-        # Emit warnings if importWithInputs is enabled and both regular and with-inputs directories exist
-        # This function is used only for its side effects (builtins.trace), not its return value
+        # Warn if both nix/<dir> and nix/with-inputs/<dir> exist when importWithInputs=true
         # deadnix: skip
-        checkDualTree =
-          regularPath: withInputsPath: dirType:
+        warnRedundantWithInputs =
+          dir:
           if
-            (cfg.importWithInputs && builtins.pathExists regularPath && builtins.pathExists withInputsPath)
+            cfg.importWithInputs
+            && builtins.pathExists "${path}/${dir}"
+            && builtins.pathExists "${path}/${dirNames.withInputs}/${dir}"
           then
             builtins.trace ''
-              nixDir warning: Both '${cfg.dirName}/${dirType}' and '${cfg.dirName}/with-inputs/${dirType}' exist.
-              Consider unifying them in the default '${cfg.dirName}/${dirType}' tree when using importWithInputs=true.
+              nixDir warning: Both '${cfg.dirName}/${dir}' and '${cfg.dirName}/${dirNames.withInputs}/${dir}' exist.
+              Consider unifying them in the default '${cfg.dirName}/${dir}' tree when using importWithInputs=true.
             '' true
           else
             false;
 
+        # All directory paths that support with-inputs pattern
+        outputDirPaths = [
+          dirNames.packages
+          dirNames.devShells
+          dirNames.devenvShells
+          dirNames.nixosModules
+          dirNames.darwinModules
+          dirNames.homeManagerModules
+          dirNames.devenvModules
+          dirNames.nixosConfigurations
+          dirNames.darwinConfigurations
+        ];
+
         # Force evaluation of all dual-tree checks to emit warnings
-        # The result is unused, but evaluation is needed to trigger builtins.trace
         # deadnix: skip
-        _ =
-          checkDualTree "${path}/packages" "${path}/with-inputs/packages" "packages"
-          || checkDualTree "${path}/devshells" "${path}/with-inputs/devshells" "devshells"
-          || checkDualTree "${path}/devenvs" "${path}/with-inputs/devenvs" "devenvs"
-          || checkDualTree "${path}/modules/nixos" "${path}/with-inputs/modules/nixos" "modules/nixos"
-          || checkDualTree "${path}/modules/darwin" "${path}/with-inputs/modules/darwin" "modules/darwin"
-          ||
-            checkDualTree "${path}/modules/home-manager" "${path}/with-inputs/modules/home-manager"
-              "modules/home-manager"
-          || checkDualTree "${path}/modules/devenv" "${path}/with-inputs/modules/devenv" "modules/devenv"
-          ||
-            checkDualTree "${path}/configurations/nixos" "${path}/with-inputs/configurations/nixos"
-              "configurations/nixos"
-          ||
-            checkDualTree "${path}/configurations/darwin" "${path}/with-inputs/configurations/darwin"
-              "configurations/darwin";
+        _ = builtins.any warnRedundantWithInputs outputDirPaths;
 
         importer = import ./src/importer.nix {
           pkgs = null;
