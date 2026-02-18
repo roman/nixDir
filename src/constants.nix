@@ -1,4 +1,20 @@
+let
+  # Output kind names (canonical identifiers)
+  kinds = {
+    packages = "packages";
+    devShells = "devShells";
+    devenvShells = "devenvShells";
+    nixosModules = "nixosModules";
+    darwinModules = "darwinModules";
+    homeManagerModules = "homeManagerModules";
+    devenvModules = "devenvModules";
+    nixosConfigurations = "nixosConfigurations";
+    darwinConfigurations = "darwinConfigurations";
+  };
+in
 {
+  inherit kinds;
+
   # Import strategies - how files are imported
   #
   # plain:       Direct import (import file). Used for modules and configurations
@@ -47,18 +63,24 @@
     nixDarwin = "nix-darwin";
   };
 
-  # Output kind names (canonical identifiers)
-  kinds = {
-    packages = "packages";
-    devShells = "devShells";
-    devenvShells = "devenvShells";
-    nixosModules = "nixosModules";
-    darwinModules = "darwinModules";
-    homeManagerModules = "homeManagerModules";
-    devenvModules = "devenvModules";
-    nixosConfigurations = "nixosConfigurations";
-    darwinConfigurations = "darwinConfigurations";
-  };
+  # Kind groupings for iteration
+  #
+  # flakeLevelKinds: Outputs that go directly on flake (not per-system)
+  # perSystemKinds:  Outputs that are per-system (need pkgs)
+  flakeLevelKinds = [
+    kinds.nixosModules
+    kinds.darwinModules
+    kinds.homeManagerModules
+    kinds.devenvModules
+    kinds.nixosConfigurations
+    kinds.darwinConfigurations
+  ];
+
+  perSystemKinds = [
+    kinds.packages
+    kinds.devShells
+    kinds.devenvShells
+  ];
 
   # Discovery error reason types
   #
