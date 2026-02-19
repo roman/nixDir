@@ -1,6 +1,7 @@
 { ... }:
 let
   examplePath = ../example/myproj;
+  inherit (import ../src/constants.nix) dirNames;
 in
 {
   tests = [
@@ -15,14 +16,14 @@ in
       name = "example has packages directory";
       type = "unit";
       expected = true;
-      actual = builtins.pathExists "${examplePath}/nix/packages";
+      actual = builtins.pathExists "${examplePath}/nix/${dirNames.packages}";
     }
 
     {
       name = "example has devShells directory";
       type = "unit";
       expected = true;
-      actual = builtins.pathExists "${examplePath}/nix/devShells";
+      actual = builtins.pathExists "${examplePath}/nix/${dirNames.devShells}";
     }
 
     {

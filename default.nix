@@ -272,8 +272,8 @@ let
 
       # --- Packages ---
 
-      packagesPath = "${path}/packages";
-      withInputsPackagesPath = "${path}/with-inputs/packages";
+      packagesPath = "${path}/${dirNames.packages}";
+      withInputsPackagesPath = "${path}/${dirNames.withInputs}/${dirNames.packages}";
 
       regularPackages =
         if builtins.pathExists packagesPath then importer.importPackages packagesPath else { };
@@ -319,8 +319,8 @@ let
 
       # --- DevShells ---
 
-      devShellsPath = "${path}/devshells";
-      withInputsDevShellsPath = "${path}/with-inputs/devshells";
+      devShellsPath = "${path}/${dirNames.devShells}";
+      withInputsDevShellsPath = "${path}/${dirNames.withInputs}/${dirNames.devShells}";
 
       regularDevShells =
         if builtins.pathExists devShellsPath then importer.importDevShells devShellsPath else { };
@@ -335,8 +335,8 @@ let
 
       # --- Devenvs ---
 
-      devenvsPath = "${path}/devenvs";
-      withInputsDevenvsPath = "${path}/with-inputs/devenvs";
+      devenvsPath = "${path}/${dirNames.devenvShells}";
+      withInputsDevenvsPath = "${path}/${dirNames.withInputs}/${dirNames.devenvShells}";
 
       regularDevenvs =
         if builtins.pathExists devenvsPath then importer.importDevenvs devenvsPath else { };
@@ -373,7 +373,7 @@ let
 
       # --- Devenv Modules (perSystem) ---
 
-      devenvModulesPath = "${path}/modules/devenv";
+      devenvModulesPath = "${path}/${dirNames.devenvModules}";
 
       discoveredDevenvModules =
         if builtins.pathExists devenvModulesPath then importer.importDevenvs devenvModulesPath else { };
