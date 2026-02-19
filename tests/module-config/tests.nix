@@ -5,7 +5,7 @@
 }:
 let
   # Flake module with self argument applied
-  flakeModule = import ../default.nix;
+  flakeModule = import ../../default.nix;
 
   # Mock module arguments to call the flake module
   mockModuleArgs = {

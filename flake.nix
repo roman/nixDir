@@ -61,47 +61,47 @@
           # Test suite configuration
           nixtest.suites = {
             # Tests for file/directory conflict detection (test.nix + test/default.nix).
-            "conflict-detection" = import ./tests/conflict-detection-tests.nix {
+            "conflict-detection" = import ./tests/conflict-detection/tests.nix {
               inherit pkgs lib inputs;
             };
 
             # Tests for nixDir flake module configuration options and structure.
-            "module-config" = import ./tests/module-config-tests.nix {
+            "module-config" = import ./tests/module-config/tests.nix {
               inherit pkgs lib inputs;
             };
 
             # Integration tests using the example project to verify end-to-end functionality.
-            "integration" = import ./tests/integration-tests.nix {
+            "integration" = import ./tests/integration/tests.nix {
               inherit pkgs lib inputs;
             };
 
             # Tests for devShells and devenvs import and conflict detection.
-            "devshells" = import ./tests/devshells-tests.nix {
+            "devshells" = import ./tests/devshells/tests.nix {
               inherit pkgs lib inputs;
             };
 
             # Tests for platform-aware package filtering based on meta.platforms.
-            "platform-filtering" = import ./tests/platform-filtering-tests.nix {
+            "platform-filtering" = import ./tests/platform-filtering/tests.nix {
               inherit pkgs lib inputs;
             };
 
             # Tests for devenv modules import (importDevenvModules and importDevenvModulesWithInputs).
-            "devenv-modules" = import ./tests/devenv-modules-tests.nix {
+            "devenv-modules" = import ./tests/devenv-modules/tests.nix {
               inherit pkgs lib inputs;
             };
 
             # Tests for with-inputs directory pattern and conflict detection.
-            "with-inputs" = import ./tests/with-inputs-tests.nix {
+            "with-inputs" = import ./tests/with-inputs/tests.nix {
               inherit pkgs lib inputs;
             };
 
             # Tests for importWithInputs option and useInputsEverywhere parameter.
-            "import-with-inputs-option" = import ./tests/import-with-inputs-option-tests.nix {
+            "import-with-inputs-option" = import ./tests/import-with-inputs-option/tests.nix {
               inherit pkgs lib inputs;
             };
 
             # Tests for recursive nested directory discovery.
-            "nested-discovery" = import ./tests/nested-discovery-tests.nix {
+            "nested-discovery" = import ./tests/nested-discovery/tests.nix {
               inherit pkgs lib inputs;
             };
 

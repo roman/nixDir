@@ -5,8 +5,9 @@
 
 set -euo pipefail
 
-# Get the project root directory
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Get the script and project root directories
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 EXAMPLE_DIR="$PROJECT_ROOT/example/myproj"
 
 # Colors for output
@@ -116,7 +117,7 @@ test_devshells_eval() {
 test_devshells_without_devenv() {
   run_test "devShells work without devenv input"
 
-  cd "$PROJECT_ROOT/tests/fixtures/devshells-no-devenv"
+  cd "$SCRIPT_DIR/fixtures/devshells-no-devenv"
 
   local output
   if output=$(nix eval .#devShells.x86_64-linux --json 2>&1); then
@@ -194,8 +195,8 @@ test_conflict_detection() {
         };
         inherit (flakeLib) checkConflicts;
 
-        regularModules = importer.importNixOSModules ('"$PROJECT_ROOT"' + "/tests/fixtures/with-inputs-conflict/modules/nixos");
-        withInputsModules = importer.importNixOSModulesWithInputs ('"$PROJECT_ROOT"' + "/tests/fixtures/with-inputs-conflict/with-inputs/modules/nixos");
+        regularModules = importer.importNixOSModules ('"$PROJECT_ROOT"' + "/tests/with-inputs/fixtures/with-inputs-conflict/modules/nixos");
+        withInputsModules = importer.importNixOSModulesWithInputs ('"$PROJECT_ROOT"' + "/tests/with-inputs/fixtures/with-inputs-conflict/with-inputs/modules/nixos");
       in
         checkConflicts "modules/nixos" regularModules withInputsModules
     ' 2>&1); then
@@ -213,7 +214,7 @@ test_conflict_detection() {
 test_platform_linux_package_not_on_darwin() {
   run_test "Platform filtering: linux-tool not available on darwin"
 
-  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+  cd "$SCRIPT_DIR/fixtures/platform-integration"
 
   local output
   if output=$(nix eval .#packages.x86_64-darwin --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
@@ -234,7 +235,7 @@ test_platform_linux_package_not_on_darwin() {
 test_platform_linux_package_on_linux() {
   run_test "Platform filtering: linux-tool available on linux"
 
-  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+  cd "$SCRIPT_DIR/fixtures/platform-integration"
 
   local output
   if output=$(nix eval .#packages.x86_64-linux --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
@@ -251,7 +252,7 @@ test_platform_linux_package_on_linux() {
 test_platform_darwin_package_not_on_linux() {
   run_test "Platform filtering: darwin-tool not available on linux"
 
-  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+  cd "$SCRIPT_DIR/fixtures/platform-integration"
 
   local output
   if output=$(nix eval .#packages.x86_64-linux --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
@@ -272,7 +273,7 @@ test_platform_darwin_package_not_on_linux() {
 test_platform_darwin_package_on_darwin() {
   run_test "Platform filtering: darwin-tool available on darwin"
 
-  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+  cd "$SCRIPT_DIR/fixtures/platform-integration"
 
   local output
   if output=$(nix eval .#packages.x86_64-darwin --json --apply 'pkgs: builtins.attrNames pkgs' 2>&1); then
@@ -289,7 +290,7 @@ test_platform_darwin_package_on_darwin() {
 test_platform_universal_package() {
   run_test "Platform filtering: universal-tool available on all systems"
 
-  cd "$PROJECT_ROOT/tests/fixtures/platform-integration"
+  cd "$SCRIPT_DIR/fixtures/platform-integration"
 
   local linux_output darwin_output
   local all_passed=true

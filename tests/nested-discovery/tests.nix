@@ -10,7 +10,7 @@ let
       strictDiscovery ? false,
       followSymlinks ? false,
     }:
-    import ../src/importer.nix {
+    import ../../src/importer.nix {
       inherit
         pkgs
         lib
@@ -31,14 +31,14 @@ let
   # Symlink importer for followSymlinks tests
   symlinkImporter = mkImporter { followSymlinks = true; };
 
-  flatPath = ./fixtures/nested-discovery/flat;
-  depth1Path = ./fixtures/nested-discovery/depth-1;
-  depth2Path = ./fixtures/nested-discovery/depth-2;
-  depth3Path = ./fixtures/nested-discovery/depth-3;
-  hiddenPath = ./fixtures/nested-discovery/hidden;
-  terminalPath = ./fixtures/nested-discovery/terminal;
-  fileBlockingPath = ./fixtures/nested-discovery/file-blocking;
-  symlinksPath = ./fixtures/nested-discovery/symlinks;
+  flatPath = ./fixtures/flat;
+  depth1Path = ./fixtures/depth-1;
+  depth2Path = ./fixtures/depth-2;
+  depth3Path = ./fixtures/depth-3;
+  hiddenPath = ./fixtures/hidden;
+  terminalPath = ./fixtures/terminal;
+  fileBlockingPath = ./fixtures/file-blocking;
+  symlinksPath = ./fixtures/symlinks;
 in
 {
   tests = [

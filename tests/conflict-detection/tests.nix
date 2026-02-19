@@ -4,16 +4,16 @@
   inputs,
 }:
 let
-  importer = import ../src/importer.nix {
+  importer = import ../../src/importer.nix {
     inherit pkgs lib inputs;
     importWithInputs = false;
     strictDiscovery = true;
   };
 
   # Test fixture paths
-  validFilePath = ./fixtures/conflicts/valid-file;
-  validDirPath = ./fixtures/conflicts/valid-dir;
-  conflictPath = ./fixtures/conflicts/conflict-case;
+  validFilePath = ./fixtures/valid-file;
+  validDirPath = ./fixtures/valid-dir;
+  conflictPath = ./fixtures/conflict-case;
 in
 {
   tests = [
