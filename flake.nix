@@ -48,6 +48,8 @@
           };
 
           devenv.shells.default = {
+            packages = [ pkgs.just ];
+
             git-hooks.hooks = {
               deadnix = {
                 enable = true;
