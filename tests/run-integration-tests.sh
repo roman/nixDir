@@ -12,4 +12,4 @@ cd "$PROJECT_ROOT"
 echo "Running nixDir integration tests..."
 echo ""
 
-exec "$PROJECT_ROOT/tests/integration.sh" "$@"
+exec "$PROJECT_ROOT/tests/integration/integration.sh" "$@"

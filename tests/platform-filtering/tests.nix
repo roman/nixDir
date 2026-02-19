@@ -4,17 +4,17 @@
   inputs,
 }:
 let
-  flakeLib = import ../lib.nix {
+  flakeLib = import ../../lib.nix {
     inherit lib;
     dirName = "nix";
   };
 
-  importer = import ../src/importer.nix {
+  importer = import ../../src/importer.nix {
     inherit pkgs lib inputs;
     importWithInputs = false;
   };
 
-  fixturesPath = ./fixtures/platform-filtering/packages;
+  fixturesPath = ./fixtures/packages;
   testPackages = importer.importPackages fixturesPath;
 
   inherit (flakeLib) filterByPlatform;

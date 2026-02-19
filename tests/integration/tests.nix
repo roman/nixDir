@@ -1,7 +1,7 @@
 { ... }:
 let
-  examplePath = ../example/myproj;
-  inherit (import ../src/constants.nix) dirNames;
+  examplePath = ../../example/myproj;
+  inherit (import ../../src/constants.nix) dirNames;
 in
 {
   tests = [

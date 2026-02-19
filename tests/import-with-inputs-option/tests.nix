@@ -5,13 +5,13 @@
 }:
 let
   # Test importer with importWithInputs enabled
-  importerWithInputs = import ../src/importer.nix {
+  importerWithInputs = import ../../src/importer.nix {
     inherit pkgs lib inputs;
     importWithInputs = true;
   };
 
   # Test importer without importWithInputs (backward compatibility)
-  importerWithoutInputs = import ../src/importer.nix {
+  importerWithoutInputs = import ../../src/importer.nix {
     inherit pkgs lib inputs;
     importWithInputs = false;
   };
@@ -20,7 +20,7 @@ let
   testPackagesPath = ./fixtures/import-with-inputs-enabled/nix/packages;
 
   # Flake module with self argument applied
-  flakeModule = import ../default.nix;
+  flakeModule = import ../../default.nix;
 
   # Mock module arguments
   mockModuleArgs = {

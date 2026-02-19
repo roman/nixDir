@@ -4,7 +4,7 @@
   inputs,
 }:
 let
-  importer = import ../src/importer.nix {
+  importer = import ../../src/importer.nix {
     inherit pkgs lib inputs;
     importWithInputs = false;
   };
