@@ -352,7 +352,13 @@ let
       # Cross-conflict check: devShells vs devenvs
       crossConflicts = builtins.filter (name: allDevenvs ? ${name}) (builtins.attrNames allDevShells);
 
-      devShellsAndDevenvsOutput =
+      # devShells output - always available, doesn't require devenv
+      devShellsOutput = {
+        devShells = allDevShells;
+      };
+
+      # devenvs output - only meaningful when devenv input exists
+      devenvsOutput =
         if builtins.length crossConflicts > 0 then
           throw ''
             nixDir found conflicting entries between devShells and devenvs:
@@ -360,16 +366,13 @@ let
 
             DevEnv creates devShells internally, so each name must be unique across both.
 
-            DevShells: ${cfg.dirName}/devshells/ or ${cfg.dirName}/with-inputs/devshells/
-            DevEnvs: ${cfg.dirName}/devenvs/ or ${cfg.dirName}/with-inputs/devenvs/
+            DevShells: ${cfg.dirName}/${dirNames.devShells}/ or ${cfg.dirName}/${dirNames.withInputs}/${dirNames.devShells}/
+            DevEnvs: ${cfg.dirName}/${dirNames.devenvShells}/ or ${cfg.dirName}/${dirNames.withInputs}/${dirNames.devenvShells}/
 
             Please rename or remove the conflicting entries.
           ''
         else
-          {
-            devShells = allDevShells;
-            devenv.shells = allDevenvs;
-          };
+          { devenv.shells = allDevenvs; };
 
       # --- Devenv Modules (perSystem) ---
 
@@ -400,10 +403,13 @@ let
       };
     in
     lib.mkMerge (
-      [ packagesOutput ]
+      [
+        packagesOutput
+        devShellsOutput
+      ]
       ++ lib.optionals (inputs ? nixpkgs) [ overlaysOutput ]
       ++ lib.optionals (inputs ? devenv) [
-        devShellsAndDevenvsOutput
+        devenvsOutput
         devenvModulesOutput
       ]
     );

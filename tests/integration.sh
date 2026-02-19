@@ -112,6 +112,23 @@ test_devshells_eval() {
   fi
 }
 
+# Test: devShells work without devenv input
+test_devshells_without_devenv() {
+  run_test "devShells work without devenv input"
+
+  cd "$PROJECT_ROOT/tests/fixtures/devshells-no-devenv"
+
+  local output
+  if output=$(nix eval .#devShells.x86_64-linux --json 2>&1); then
+    if assert_contains "test-shell" "$output" "devShells should contain test-shell"; then
+      test_passed "devShells work without devenv input"
+    fi
+  else
+    echo "Error output: $output"
+    test_failed "devShells work without devenv input"
+  fi
+}
+
 # Test: Example hello-myproj package builds
 test_hello_package_builds() {
   run_test "Example hello-myproj package builds"
@@ -313,6 +330,7 @@ main() {
   # Run tests
   test_packages_eval
   test_devshells_eval
+  test_devshells_without_devenv
   test_hello_package_builds
   test_flake_overlay_generated
   test_conflict_detection
