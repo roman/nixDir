@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.0] - 2026-02-19
+
+### Bug Fixes
+
+- Remove debug trace from with-inputs test
+- **example:** Rename devShells to devshells
+- Decouple devShells from devenv input requirement
+
+### Documentation
+
+- Add CLAUDE.md with test instructions
+
+### Features
+
+- Add recursive nested directory discovery
+- Add file blocking rule for directory traversal
+- Add strictDiscovery option for ignored package detection
+- Add followSymlinks option for symlink directory traversal
+- Add OutputKind type system and generic importer
+- Add Justfile with test targets
+
+### Refactoring
+
+- Rename useInputsEverywhere to importWithInputs
+- Add constants module and data-driven dual-tree warnings
+- Replace importer with generic importByStrategy implementation
+- Replace 6 add* functions with data-driven addFlakeLevelOutput
+- Separate nixDir logic from flake-parts module structure
+- Use dirNames constants for path construction
+- **tests:** Co-locate fixtures with test files
 ## [3.1.0] - 2026-01-14
 
 ### Bug Fixes
