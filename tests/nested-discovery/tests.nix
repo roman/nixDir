@@ -39,6 +39,7 @@ let
   terminalPath = ./fixtures/terminal;
   fileBlockingPath = ./fixtures/file-blocking;
   symlinksPath = ./fixtures/symlinks;
+  nestedFilesPath = ./fixtures/nested-files;
 in
 {
   tests = [
@@ -273,6 +274,39 @@ in
           result = symlinkImporter.importPackages symlinksPath;
         in
         result ? real-pkg;
+    }
+
+    {
+      name = "nested-files: discovers .nix file at root level";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = importer.importPackages nestedFilesPath;
+        in
+        result ? root-file;
+    }
+
+    {
+      name = "nested-files: discovers .nix file inside organizational directory";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = importer.importPackages nestedFilesPath;
+        in
+        result ? nested-file;
+    }
+
+    {
+      name = "nested-files: discovers directory with default.nix inside organizational directory";
+      type = "unit";
+      expected = true;
+      actual =
+        let
+          result = importer.importPackages nestedFilesPath;
+        in
+        result ? nested-dir;
     }
   ];
 }
