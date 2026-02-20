@@ -256,9 +256,10 @@ inputs: { pkgs, ... }:
 }
 ```
 
-> ![IMPORTANT] DevShell and DevEnv names must be unique across both types since devenv
-> creates devShells internally. You cannot have a devShell named "default" and a devenv
-> named "default" - nixDir will detect this conflict and throw an error.
+> [!IMPORTANT]
+> DevShell and DevEnv names must be unique across both types since devenv creates devShells
+> internally. You cannot have a devShell named "default" and a devenv named "default" -
+> nixDir will detect this conflict and throw an error.
 
 ## Conflict Detection
 

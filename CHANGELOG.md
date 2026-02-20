@@ -13,10 +13,12 @@ All notable changes to this project will be documented in this file.
 ### Documentation
 
 - Add CLAUDE.md with test instructions
+- Document .nix files in organizational subdirectories
 
 ### Features
 
 - Add recursive nested directory discovery
+- Discover .nix files at all directory levels (not just root)
 - Add file blocking rule for directory traversal
 - Add strictDiscovery option for ignored package detection
 - Add followSymlinks option for symlink directory traversal

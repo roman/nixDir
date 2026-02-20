@@ -73,6 +73,9 @@ Key options:
 - `installFlakeOverlay` - Make packages available in `pkgs` across all your outputs
 - `filterUnsupportedSystems` - Filter packages by `meta.platforms` (default: `true`)
   - Note: Automatically disabled when `generateAllPackage = true` to avoid infinite recursion
+- `strictDiscovery` - Error when directories are ignored during discovery (default: `false`)
+  - Useful for catching organizational issues like exceeding max nesting depth
+- `followSymlinks` - Follow symlinks during directory discovery (default: `false`)
 
 See [example flake.nix](./example/myproj/flake.nix) for all options.
 

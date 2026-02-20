@@ -45,7 +45,7 @@ Edit your `flake.nix`:
 }
 ```
 
-> **Warning**
+> [!WARNING]
 > Remember to run `git add flake.nix nix` before building. Nix flakes only see git-tracked files.
 
 ## Your First Package
@@ -118,6 +118,11 @@ nixDir follows these conventions:
 |--------------|---------|
 | `nix/packages/NAME.nix` | `packages.<system>.NAME` |
 | `nix/packages/NAME/default.nix` | `packages.<system>.NAME` |
+| `nix/packages/category/NAME.nix` | `packages.<system>.NAME` |
+| `nix/packages/category/NAME/default.nix` | `packages.<system>.NAME` |
+
+> [!NOTE]
+> Organizational subdirectories (like `category/`) don't affect the output name.
 
 nixDir automatically:
 1. Scanned the `nix/packages/` directory
