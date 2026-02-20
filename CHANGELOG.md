@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.1] - 2026-02-20
+
+### Documentation
+
+- Document nested file discovery and use GitHub admonitions
 ## [3.2.0] - 2026-02-19
 
 ### Bug Fixes
@@ -13,12 +18,10 @@ All notable changes to this project will be documented in this file.
 ### Documentation
 
 - Add CLAUDE.md with test instructions
-- Document .nix files in organizational subdirectories
 
 ### Features
 
 - Add recursive nested directory discovery
-- Discover .nix files at all directory levels (not just root)
 - Add file blocking rule for directory traversal
 - Add strictDiscovery option for ignored package detection
 - Add followSymlinks option for symlink directory traversal
