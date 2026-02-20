@@ -102,7 +102,10 @@ let
     else
       result.discovered;
 
-  # discoverDirsWithFlakeOutputs recursively finds directories containing default.nix files.
+  # discoverFlakeOutputs recursively finds all Nix entries in a directory tree:
+  # - Directories containing default.nix (leaf directories)
+  # - Standalone .nix files at any level
+  #
   # Works for all output types: packages, modules, configurations, devshells, etc.
   #
   # Arguments:
@@ -117,7 +120,8 @@ let
   #
   # Leaf rule: directory with default.nix is a leaf (entry found, don't recurse deeper).
   # Conflict check: errors if both foo/default.nix and foo.nix exist at same level.
-  discoverDirsWithFlakeOutputs =
+  # File rule: .nix files are discovered at any level with their basename as name.
+  discoverFlakeOutputs =
     {
       outputRoot,
       currentPath,
@@ -212,51 +216,53 @@ let
           }
         # Organizational directory - recurse
         else
-          discoverDirsWithFlakeOutputs {
+          discoverFlakeOutputs {
             inherit outputRoot;
             currentPath = dirPath;
             pathFromRoot = newPathFromRoot;
             depth = depth + 1;
           };
 
-      results = map processDir visibleDirs;
+      dirResults = map processDir visibleDirs;
+      discoveredFromDirs = builtins.concatLists (map (r: r.discovered) dirResults);
+      ignoredFromDirs = builtins.concatLists (map (r: r.ignored) dirResults);
+
+      # Collect .nix files at current level, excluding those that conflict with directories
+      discoveredDirNames = map (d: d.name) discoveredFromDirs;
+      localNixFiles = builtins.filter (f: !builtins.elem (lib.removeSuffix ".nix" f) discoveredDirNames) (
+        nixFiles currentPath
+      );
+      fileEntries = map (fileName: {
+        name = lib.removeSuffix ".nix" fileName;
+        pathFromRoot = if pathFromRoot == "" then fileName else "${pathFromRoot}/${fileName}";
+      }) localNixFiles;
     in
     {
-      discovered = builtins.concatLists (map (r: r.discovered) results);
-      ignored = builtins.concatLists (map (r: r.ignored) results);
+      discovered = discoveredFromDirs ++ fileEntries;
+      ignored = ignoredFromDirs;
     };
 
-  # nixSubDirNames traverses subdirectories recursively looking for default.nix files.
-  # Returns list of { name, pathFromRoot } records for directories containing default.nix.
-  # In strict mode, throws if any directories were ignored.
-  nixSubDirNames =
+  # discoverOutputs finds all Nix entries (directories with default.nix and .nix files).
+  # Returns list of { name, pathFromRoot } records.
+  # In strict mode, throws if any entries were ignored.
+  discoverOutputs =
     path:
-    validateDiscovery path (discoverDirsWithFlakeOutputs {
+    validateDiscovery path (discoverFlakeOutputs {
       outputRoot = path;
       currentPath = path;
     });
 
   # mkImportDir creates an import function that discovers and imports files from a directory.
   # This is the core building block - takes a single-file import function and applies it
-  # to all discovered files/directories.
+  # to all discovered entries (directories with default.nix and standalone .nix files).
   mkImportDir =
     importFn: path:
-    let
-      fromDirs = builtins.listToAttrs (
-        map (entry: {
-          name = entry.name;
-          value = importFn "${path}/${entry.pathFromRoot}";
-        }) (nixSubDirNames path)
-      );
-
-      fromFiles = builtins.listToAttrs (
-        map (fileName: {
-          name = lib.removeSuffix ".nix" fileName;
-          value = importFn "${path}/${fileName}";
-        }) (nixFiles path)
-      );
-    in
-    fromDirs // fromFiles;
+    builtins.listToAttrs (
+      map (entry: {
+        name = entry.name;
+        value = importFn "${path}/${entry.pathFromRoot}";
+      }) (discoverOutputs path)
+    );
 
   # importByStrategy creates an import function based on strategy and withInputs flag.
   # This single function replaces 18 import* functions from the old importer.
