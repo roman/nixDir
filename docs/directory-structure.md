@@ -132,7 +132,8 @@ pkgs.mkShell {
 
 **Result**: Available via `nix develop`
 
-**Note**: DevShell names must be unique across both `devshells/` and `devenvs/` since devenv creates devShells internally.
+> [!NOTE]
+> DevShell names must be unique across both `devshells/` and `devenvs/` since devenv creates devShells internally.
 
 ### devenvs/
 
@@ -209,7 +210,8 @@ pkgs.mkShell {
 
 **Signature**: Standard devenv module
 
-**Note**: These can be automatically imported into all devenvs using the option
+> [!NOTE]
+> These can be automatically imported into all devenvs using the option
 `installAllDevenvModules`
 
 ### configurations/nixos/
@@ -241,9 +243,9 @@ pkgs.mkShell {
 
 ## File vs Directory Naming
 
-You can define items in two ways:
+You can define items in three ways:
 
-### Single File
+### Single File at Root
 
 ```
 packages/
@@ -251,6 +253,20 @@ packages/
 ```
 
 **When to use**: Simple, self-contained definitions
+
+**Output**: `packages.<system>.hello`
+
+### Single File in Organizational Directory
+
+```
+packages/
+└── utils/
+    └── helper.nix
+```
+
+**When to use**: Grouping related packages without creating separate directories for each
+
+**Output**: `packages.<system>.helper` (organizational directories don't affect the name)
 
 ### Directory with default.nix
 
@@ -265,7 +281,21 @@ packages/
 
 **When to use**: Complex definitions needing multiple files
 
-**Both create the same output**: `packages.<system>.hello`
+**Output**: `packages.<system>.hello`
+
+You can combine these patterns:
+
+```
+packages/
+├── simple.nix                    # → packages.<system>.simple
+├── utils/
+│   ├── helper.nix                # → packages.<system>.helper
+│   └── formatter/
+│       └── default.nix           # → packages.<system>.formatter
+└── tools/
+    └── cli/
+        └── default.nix           # → packages.<system>.cli
+```
 
 ## File Naming Conventions
 
@@ -449,8 +479,11 @@ my-project/
 └── nix/
     ├── packages/
     │   ├── cli.nix
+    │   ├── utils/
+    │   │   ├── helper.nix        # Organized in subdirectory
+    │   │   └── formatter.nix
     │   └── server/
-    │       ├── default.nix
+    │       ├── default.nix       # Complex package with multiple files
     │       └── config.yaml
     ├── devshells/
     │   ├── default.nix
@@ -514,7 +547,14 @@ platform/
 **Solution**: Check your filename:
 - `my-package.nix` → `my-package` (not `myPackage`)
 - Remove the `.nix` extension from the attribute name
-- Directory names don't matter, only the final file/directory name
+- Organizational directory names don't affect the output name
+
+Examples:
+```
+packages/hello-world.nix        → packages.<system>.hello-world
+packages/utils/helper.nix       → packages.<system>.helper
+packages/tools/cli/default.nix  → packages.<system>.cli
+```
 
 ### Import Errors
 
