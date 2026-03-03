@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.0] - 2026-03-03
+
+### Features
+
+- Add nixdir-skill for Claude Code
 ## [3.2.1] - 2026-02-20
 
 ### Documentation
