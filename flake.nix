@@ -32,6 +32,9 @@
       flake = {
         flakeModule = import ./. self;
         flakeModules.default = import ./. self;
+
+        homeManagerModules.nixdir-skill = import ./nix/modules/home-manager/nixdir-skill.nix;
+        devenvModules.nixdir-skill = import ./nix/modules/devenv/nixdir-skill.nix;
       };
       perSystem =
         {
@@ -45,6 +48,7 @@
             calculate-version = pkgs.callPackage ./nix/packages/calculate-version.nix { };
             generate-changelog = pkgs.callPackage ./nix/packages/generate-changelog.nix { };
             release = pkgs.callPackage ./nix/packages/release.nix { };
+            nixdir-skill = pkgs.callPackage ./nix/packages/nixdir-skill.nix { };
           };
 
           devenv.shells.default = {
