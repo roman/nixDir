@@ -223,6 +223,11 @@ let
           regularPath = "${path}/${kind.dirPath}";
           withInputsPath = "${path}/${dirNames.withInputs}/${kind.dirPath}";
 
+          # Only configurations respect importWithInputs for the regular path.
+          # Modules use the standard module system which injects inputs via specialArgs.
+          isConfiguration = kindName == "nixosConfigurations" || kindName == "darwinConfigurations";
+          useInputsForRegular = isConfiguration && cfg.importWithInputs;
+
           importKind =
             p: withInputs:
             let
@@ -233,7 +238,8 @@ let
             in
             if kind.wrapper != null then lib.mapAttrs kind.wrapper raw else raw;
 
-          regular = if builtins.pathExists regularPath then importKind regularPath false else { };
+          regular =
+            if builtins.pathExists regularPath then importKind regularPath useInputsForRegular else { };
 
           withInputsResult =
             if builtins.pathExists withInputsPath then importKind withInputsPath true else { };
