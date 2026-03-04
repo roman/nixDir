@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.2] - 2026-03-04
+
+### Bug Fixes
+
+- Respect importWithInputs for configurations
 ## [3.3.1] - 2026-03-04
 
 ### Refactoring
