@@ -1,7 +1,13 @@
-{ lib, config, ... }:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 
 let
-  cfg = config.nixdir-skill;
+  cfg = config.claude.code.plugins.nixDir;
+  defaultPackage = pkgs.callPackage ../../packages/nixdir-skill.nix { };
 
   mkSkillFiles =
     pkg:
@@ -23,11 +29,13 @@ let
     );
 in
 {
-  options.nixdir-skill = {
-    enable = lib.mkEnableOption "nixdir-skill for Claude Code (local project)";
+  options.claude.code.plugins.nixDir = {
+    enable = lib.mkEnableOption "nixDir skill for Claude Code (local project)";
 
     package = lib.mkOption {
       type = lib.types.package;
+      default = defaultPackage;
+      defaultText = lib.literalExpression "pkgs.callPackage <nixDir>/nix/packages/nixdir-skill.nix { }";
       description = "The nixdir-skill package";
     };
   };
