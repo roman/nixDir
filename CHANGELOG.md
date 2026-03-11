@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.3] - 2026-03-11
+
+### Bug Fixes
+
+- Respect importWithInputs for all flake-level outputs
 ## [3.3.2] - 2026-03-04
 
 ### Bug Fixes
