@@ -97,16 +97,16 @@ in
     }
 
     {
-      name = "importNixOSModules works with importWithInputs=true";
+      name = "importWithInputs=true makes importNixOSModules pass inputs to module files";
       type = "unit";
       expected = true;
       actual =
         let
           modulesPath = ./fixtures/import-with-inputs-enabled/nix/modules;
-          modules = importerWithInputs.importDirWithInputs modulesPath;
+          modules = importerWithInputs.importNixOSModules modulesPath;
+          mod = modules.test-module;
         in
-        # Should be able to import modules (even though directory might be empty for now)
-        builtins.isAttrs modules;
+        mod._nixDir.receivedInputs;
     }
   ];
 }
