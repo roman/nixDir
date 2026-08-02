@@ -249,7 +249,24 @@ let
         ];
 
       flakeOverlay = lib.mkIf (cfg.generateFlakeOverlay || cfg.installFlakeOverlay) {
-        overlays.flake = _final: prev: inputs.self.packages.${prev.stdenv.hostPlatform.system};
+        # An overlay follows nixpkgs into every cross package set it spawns,
+        # where the host platform is a target the flake builds nothing for.
+        # Firefox reaches one this way: it evaluates `pkgsCross.wasi32` for its
+        # RLBox sandbox, and an unguarded lookup aborts the whole evaluation
+        # with `attribute 'wasm32-wasi' missing`. Contribute nothing instead.
+        #
+        # The warning keeps the signal for the case the fallback would
+        # otherwise hide: a native build where the flake exposes no packages
+        # for the system in front of the user.
+        overlays.flake =
+          _final: prev:
+          let
+            inherit (prev.stdenv) hostPlatform buildPlatform;
+          in
+          inputs.self.packages.${hostPlatform.system} or (lib.warnIf (hostPlatform == buildPlatform)
+            "nixDir: flake has no packages for ${hostPlatform.system}; overlays.flake contributes nothing"
+            { }
+          );
       };
 
       dataDriverOutputs = builtins.foldl' (

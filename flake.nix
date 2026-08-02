@@ -111,6 +111,11 @@
               inherit pkgs lib inputs;
             };
 
+            # Tests for overlays.flake, including cross package sets.
+            "flake-overlay" = import ./tests/flake-overlay/tests.nix {
+              inherit pkgs lib inputs;
+            };
+
           };
         };
     };
