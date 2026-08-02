@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.4] - 2026-08-02
+
+### Bug Fixes
+
+- Guard flake overlay against cross package sets
 ## [3.3.3] - 2026-03-11
 
 ### Bug Fixes
