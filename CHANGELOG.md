@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.5] - 2026-08-30
+
+### Documentation
+
+- Add v3 workflow badges
 ## [3.3.4] - 2026-08-02
 
 ### Bug Fixes
