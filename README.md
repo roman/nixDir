@@ -1,5 +1,8 @@
 # nixDir
 
+[![CI](https://github.com/roman/nixDir/actions/workflows/ci.yml/badge.svg?branch=v3)](https://github.com/roman/nixDir/actions/workflows/ci.yml?query=branch%3Av3)
+[![Release](https://github.com/roman/nixDir/actions/workflows/release.yml/badge.svg?branch=v3)](https://github.com/roman/nixDir/actions/workflows/release.yml?query=branch%3Av3)
+
 _Convention-based directory structure for Nix flakes._
 
 nixDir is a flake-parts module that automatically discovers and wires up flake outputs based
