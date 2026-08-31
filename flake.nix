@@ -3,6 +3,9 @@
     nixpkgs.url = "github:NixOS/nixpkgs/release-25.11";
     flake-parts.url = "github:hercules-ci/flake-parts";
 
+    devshell-modules.url = "github:roman/devshell-modules";
+    devshell-modules.inputs.nixpkgs.follows = "nixpkgs";
+
     # TODO: Pin to v1.11.3 when released. v1.11.2 has a bug where
     # process-compose.configFile is accessed before being defined for devenvs
     # without processes. The fix (commit 6c6dd472) is on main but not yet released.
@@ -26,7 +29,7 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import inputs.systems;
       imports = [
-        inputs.devenv.flakeModule
+        inputs.devshell-modules.flakeModule
         inputs.nixtest.flakeModule
       ];
       flake = {

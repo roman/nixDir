@@ -6,7 +6,7 @@ Convention-based flake structure system for Nix.
 
 Enter the dev shell:
 ```bash
-nix develop --impure
+nix develop
 ```
 
 ## Running Tests
