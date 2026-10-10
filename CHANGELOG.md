@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.0] - 2026-10-10
+
+### Features
+
+- Add home-manager configurations
 ## [3.3.5] - 2026-08-30
 
 ### Documentation
