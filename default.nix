@@ -3,6 +3,7 @@ _nixDirFlake:
   lib,
   inputs,
   config,
+  withSystem,
   ...
 }:
 let
@@ -198,6 +199,7 @@ let
           devenvModules
           nixosConfigurations
           darwinConfigurations
+          homeConfigurations
           ;
       };
 
@@ -213,7 +215,10 @@ let
         }
       );
 
-      outputKinds = import ./src/output-kinds.nix { flakeInputs = inputs; };
+      outputKinds = import ./src/output-kinds.nix {
+        flakeInputs = inputs;
+        inherit withSystem;
+      };
 
       # Generic function to add any flake-level output kind
       addFlakeLevelOutput =

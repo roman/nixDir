@@ -26,6 +26,7 @@ let
   mockModuleArgs = {
     inherit lib inputs;
     system = pkgs.system;
+    withSystem = throw "withSystem is not available in this mock";
     config = {
       nixDir = {
         enable = false;

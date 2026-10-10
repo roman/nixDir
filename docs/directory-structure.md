@@ -35,7 +35,8 @@ your-project/
     │   └── devenv/               # devenv modules
     ├── configurations/
     │   ├── nixos/                # NixOS system configurations
-    │   └── darwin/               # nix-darwin configurations
+    │   ├── darwin/               # nix-darwin configurations
+    │   └── home-manager/         # standalone home-manager configurations
     └── with-inputs/              # Non-portable versions
         ├── packages/
         ├── devshells/
@@ -47,7 +48,8 @@ your-project/
         │   └── devenv/
         └── configurations/
             ├── nixos/
-            └── darwin/
+            ├── darwin/
+            └── home-manager/
 ```
 
 ## Directory Purpose and Output Mapping
@@ -240,6 +242,41 @@ pkgs.mkShell {
 **Output**: `darwinConfigurations.<name>`
 
 **Signature**: Same as NixOS configurations
+
+### configurations/home-manager/
+
+**Purpose**: Standalone home-manager configurations, for hosts where
+home-manager is not managed by NixOS or nix-darwin
+
+**Output**: `homeConfigurations.<name>`
+
+**Requires**: a `home-manager` flake input
+
+**Signature**: The arguments of `home-manager.lib.homeManagerConfiguration`,
+with `system` accepted in place of `pkgs`.
+
+When the file sets `system`, nixDir passes the flake's perSystem `pkgs` for
+that system, so the configuration sees the same `installOverlays` and
+`nixpkgsConfig` as the flake's packages. Set `pkgs` instead to choose the
+package set yourself. When a file sets both, `pkgs` wins. `extraSpecialArgs`
+includes `inputs`, and a value the file sets under the same name replaces it.
+
+**Example**:
+```nix
+# nix/configurations/home-manager/alice.nix
+{
+  system = "x86_64-linux";
+  modules = [
+    {
+      home.username = "alice";
+      home.homeDirectory = "/home/alice";
+      home.stateVersion = "25.11";
+    }
+  ];
+}
+```
+
+Activate it with `home-manager switch --flake .#alice`.
 
 ## File vs Directory Naming
 

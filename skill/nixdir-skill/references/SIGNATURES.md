@@ -305,5 +305,6 @@ inputs:
 | modules/devenv/ | plain | `{ config, lib, pkgs, ... }: { }` |
 | configurations/nixos/ | plain | `{ system, modules }` |
 | configurations/darwin/ | plain | `{ system, modules }` |
+| configurations/home-manager/ | plain | `{ system or pkgs, modules, ... }` |
 
 **With inputs**: Prepend `inputs:` as first parameter to any signature above.

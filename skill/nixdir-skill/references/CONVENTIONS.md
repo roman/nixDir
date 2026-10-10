@@ -13,6 +13,7 @@
 | `nix/modules/devenv/`          | `devenvModules.<name>`          | plain       | No         |
 | `nix/configurations/nixos/`    | `nixosConfigurations.<name>`    | plain       | No         |
 | `nix/configurations/darwin/`   | `darwinConfigurations.<name>`   | plain       | No         |
+| `nix/configurations/home-manager/` | `homeConfigurations.<name>` | plain       | No         |
 
 **Per-System** outputs are computed for each system in the `systems` list.
 **Flake-level** outputs are computed once, independent of system.

@@ -92,6 +92,7 @@ See [example flake.nix](./example/myproj/flake.nix) for all options.
 | `nix/modules/nixos/` | `nixosModules.<name>` |
 | `nix/modules/darwin/` | `darwinModules.<name>` |
 | `nix/configurations/nixos/` | `nixosConfigurations.<name>` |
+| `nix/configurations/home-manager/` | `homeConfigurations.<name>` |
 | `nix/with-inputs/*/` | Non-portable versions |
 
 See [Directory Structure](./docs/directory-structure.md) for complete details.

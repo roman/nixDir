@@ -119,6 +119,11 @@
               inherit pkgs lib inputs;
             };
 
+            # Tests for homeConfigurations discovered under configurations/home-manager.
+            "home-configurations" = import ./tests/home-configurations/tests.nix {
+              inherit pkgs lib inputs;
+            };
+
           };
         };
     };

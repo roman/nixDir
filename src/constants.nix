@@ -10,6 +10,7 @@ let
     devenvModules = "devenvModules";
     nixosConfigurations = "nixosConfigurations";
     darwinConfigurations = "darwinConfigurations";
+    homeConfigurations = "homeConfigurations";
   };
 in
 {
@@ -42,6 +43,7 @@ in
     devenvModules = "modules/devenv";
     nixosConfigurations = "configurations/nixos";
     darwinConfigurations = "configurations/darwin";
+    homeConfigurations = "configurations/home-manager";
     withInputs = "with-inputs";
   };
 
@@ -55,12 +57,14 @@ in
     devenvModules = "devenvModules";
     nixosConfigurations = "nixosConfigurations";
     darwinConfigurations = "darwinConfigurations";
+    homeConfigurations = "homeConfigurations";
   };
 
   # Required flake inputs for validation
   inputNames = {
     devenv = "devenv";
     nixDarwin = "nix-darwin";
+    homeManager = "home-manager";
   };
 
   # Kind groupings for iteration
@@ -74,6 +78,7 @@ in
     kinds.devenvModules
     kinds.nixosConfigurations
     kinds.darwinConfigurations
+    kinds.homeConfigurations
   ];
 
   perSystemKinds = [

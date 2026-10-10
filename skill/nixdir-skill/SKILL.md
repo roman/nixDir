@@ -36,6 +36,7 @@ Files are auto-discovered based on directory location and naming conventions.
 | `nix/modules/devenv/`          | `devenvModules.<name>`          | plain         | `{ config, ... }: { }`          |
 | `nix/configurations/nixos/`    | `nixosConfigurations.<name>`    | plain         | `{ system, modules }`           |
 | `nix/configurations/darwin/`   | `darwinConfigurations.<name>`   | plain         | `{ system, modules }`           |
+| `nix/configurations/home-manager/` | `homeConfigurations.<name>` | plain         | `{ system or pkgs, modules, ... }`           |
 
 ## Prerequisites
 

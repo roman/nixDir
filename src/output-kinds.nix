@@ -1,5 +1,6 @@
 {
   flakeInputs,
+  withSystem,
 }:
 let
   constants = import ./constants.nix;
@@ -83,6 +84,45 @@ in
         }
       );
     requiresInput = inputNames.nixDarwin;
+    perSystem = false;
+  };
+
+  ${kinds.homeConfigurations} = {
+    dirPath = dirNames.homeConfigurations;
+    flakeAttr = flkAttrNames.homeConfigurations;
+    strategy = strategies.plain;
+    wrapper =
+      name: attrs:
+      if !(flakeInputs ? home-manager) then
+        throw ''
+          nixDir detected a ${dirNames.homeConfigurations}/${name} entry, but home-manager is not in the flake inputs.
+
+          Please include home-manager to your flake inputs:
+
+          {
+            inputs = {
+                   # ...
+                   home-manager.url = "github:nix-community/home-manager";
+            };
+          }
+        ''
+      else if !(attrs ? pkgs || attrs ? system) then
+        throw "nixDir: ${dirNames.homeConfigurations}/${name} must set either `system` or `pkgs`."
+      else
+        # homeManagerConfiguration takes a package set rather than a system.
+        # Resolving `system` through withSystem gives the configuration the
+        # same overlays and nixpkgs config as the flake's perSystem outputs.
+        flakeInputs.home-manager.lib.homeManagerConfiguration (
+          builtins.removeAttrs attrs [ "system" ]
+          // {
+            pkgs = attrs.pkgs or (withSystem attrs.system ({ pkgs, ... }: pkgs));
+            extraSpecialArgs = {
+              inputs = flakeInputs;
+            }
+            // attrs.extraSpecialArgs or { };
+          }
+        );
+    requiresInput = inputNames.homeManager;
     perSystem = false;
   };
 
